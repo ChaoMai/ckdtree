@@ -14,7 +14,7 @@ public class KDTreeMap<TData> implements KDTreeMapInterface<TData> {
     for (int i = 0; i < k; i++) {
       rootKey[i] = Double.NEGATIVE_INFINITY;
     }
-    root = new InternalNode(rootKey, null, new Leaf<TData>(rootKey));
+    root = new InternalNode(rootKey, null, new Leaf<TData>(rootKey, new Gen()), new Gen());
     count = new AtomicInteger(0);
   }
 
@@ -118,16 +118,16 @@ public class KDTreeMap<TData> implements KDTreeMapInterface<TData> {
     if (pv.state != State.CLEAN) return false;
     InternalNode p = sr.parent;
     Leaf<TData> l = sr.leaf;
-    Leaf<TData> newSibling = new Leaf<TData>(key, data);
+    Leaf<TData> newSibling = new Leaf<TData>(key, data, new Gen());
     int depth = sr.leafDepth;
     int compareResult;
     int skip = 0;
     while ((compareResult = keyCompare(key, l.key, depth++)) == 0) ++skip;
     InternalNode newInternalNode = null;
     if (compareResult < 0) {
-      newInternalNode = new InternalNode(l.key, newSibling, l, skip);
+      newInternalNode = new InternalNode(l.key, newSibling, l, skip, new Gen());
     } else {
-      newInternalNode = new InternalNode(key, l, newSibling, skip);
+      newInternalNode = new InternalNode(key, l, newSibling, skip, new Gen());
     }
     if (pv.state != State.CLEAN || !p.casFlag(pv, new Flag(State.INSERTING))) return false;
     if (l == p.left) p.left = newInternalNode;
@@ -168,7 +168,7 @@ public class KDTreeMap<TData> implements KDTreeMapInterface<TData> {
     Node other = (l == p.left ? p.right : p.left);
     if (other instanceof InternalNode) {
       InternalNode o = (InternalNode) other;
-      InternalNode newInternal = new InternalNode(o.key, null, null, (p.skippedDepth + o.skippedDepth + 1));
+      InternalNode newInternal = new InternalNode(o.key, null, null, (p.skippedDepth + o.skippedDepth + 1), new Gen());
       Flag ov;
       do {
         ov = o.flag;
@@ -282,5 +282,11 @@ public class KDTreeMap<TData> implements KDTreeMapInterface<TData> {
 
   public String toString() {
     return "Our_kd-Tree_without_helpers";
+  }
+
+  @Override
+  // todo: complete method
+  public KDTreeMap<TData> snapshot() {
+    return null;
   }
 }

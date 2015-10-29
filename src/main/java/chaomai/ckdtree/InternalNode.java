@@ -14,25 +14,25 @@ class InternalNode extends Node {
     return flagUpdater.compareAndSet(this, expect, update);
   }
 
-  public InternalNode(double[] key) {
-    super(key);
+  public InternalNode(double[] key, Gen gen) {
+    super(key, gen);
     skippedDepth = 0;
   }
 
-  public InternalNode(double[] key, int skip) {
-    super(key);
+  public InternalNode(double[] key, int skip, Gen gen) {
+    super(key, gen);
     skippedDepth = skip;
   }
 
-  public InternalNode(double[] key, Node l, Node r) {
-    super(key);
+  public InternalNode(double[] key, Node l, Node r, Gen gen) {
+    super(key, gen);
     left = l;
     right = r;
     skippedDepth = 0;
   }
 
-  public InternalNode(double[] key, Node l, Node r, int skip) {
-    super(key);
+  public InternalNode(double[] key, Node l, Node r, int skip, Gen gen) {
+    super(key, gen);
     left = l;
     right = r;
     skippedDepth = skip;

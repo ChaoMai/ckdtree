@@ -16,4 +16,6 @@ public interface KDTreeMapInterface<TData> {
   List<NearestResult> nearest(double[] target, int n);
 
   NearestResult nearest(double[] target);
+
+  KDTreeMapInterface<TData> snapshot();
 }
