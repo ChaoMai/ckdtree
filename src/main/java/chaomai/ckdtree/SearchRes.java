@@ -11,6 +11,8 @@ class SearchRes<V> {
   Leaf<V> l;
   int leafDepth;
 
+  static final Object RESTART = new Object();
+
   SearchRes(InternalNode gp, Update gpupdate, InternalNode p, Update pupdate, Leaf<V> l, int leafDepth) {
     this.gp = gp;
     this.gpupdate = gpupdate;
