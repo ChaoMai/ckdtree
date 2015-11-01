@@ -4,6 +4,22 @@ package chaomai.ckdtree;
  * Created by chaomai on 11/1/15.
  */
 public class CKDTreeMap<V> implements IKDTreeMap<V> {
+  private InternalNode root;
+  private final boolean readOnly;
+
+  CKDTreeMap(final boolean readOnly) {
+    this.readOnly = readOnly;
+  }
+
+  CKDTreeMap(final InternalNode r, final boolean readOnly) {
+    this(readOnly);
+    this.root = r;
+  }
+
+  public CKDTreeMap() {
+    this(false);
+  }
+
   @Override
   public boolean insert(double[] key, V data) {
     return false;
