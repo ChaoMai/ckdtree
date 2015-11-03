@@ -24,6 +24,14 @@ public class CKDTreeMap<V> {
     this(false);
   }
 
+  boolean isReadOnly() {
+    return readOnly;
+  }
+
+  boolean nonReadOnly() {
+    return !readOnly;
+  }
+
   InternalNode<V> readRoot() {
     return null;
   }
@@ -90,7 +98,8 @@ public class CKDTreeMap<V> {
             if (((InternalNode<V>) cur).GCAS(
                 (InternalNode<V>) left,
                 ((InternalNode<V>) left).renewed(startGen),
-                this)) {
+                this,
+                Direction.LEFT)) {
               // retry on cur
               continue;
             } else {

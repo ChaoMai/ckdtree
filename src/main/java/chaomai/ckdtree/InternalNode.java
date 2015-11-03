@@ -14,8 +14,14 @@ class InternalNode<V> extends Node {
 
   InternalNode prev;
 
-  public static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> updater =
+  public static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> prevUpdater =
       AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, InternalNode.class, "prev");
+
+  public static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> leftUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, InternalNode.class, "left");
+
+  public static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> rightUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, InternalNode.class, "right");
 
   InternalNode(double[] key, Node left, Node right, Update update, int skippedDepth, Gen gen) {
     super(key);
@@ -27,12 +33,14 @@ class InternalNode<V> extends Node {
   }
 
   InternalNode renewed(Gen newGen) {
-    // todo: should perform a deep copy here(everything here and things in `update`), any optimization?
+    // todo: should perform a deep copy here(everything here and things in `update`),
+    // todo: or just create new `update`,
+    // todo: any optimization?
     return new InternalNode(key, left, right, new Update(), skippedDepth, gen);
   }
 
   void WRITE_PREV(InternalNode old) {
-    updater.set(this, old);
+    prevUpdater.set(this, old);
   }
 
   private InternalNode GCAS_Complete(InternalNode n, CKDTreeMap<V> ckd) {
@@ -45,7 +53,7 @@ class InternalNode<V> extends Node {
       // todo: finish this
       if (prev == null) {
         return n;
-      } else if (prev instanceof InternalNode) {
+      } else if (prev instanceof InternalNode && ckd.nonReadOnly()) {
         if (root.gen == this.gen) {
         }
       }
@@ -54,13 +62,24 @@ class InternalNode<V> extends Node {
     return null;
   }
 
-  boolean GCAS(InternalNode old, InternalNode n, CKDTreeMap<V> ckd) {
-    n.WRITE_PREV(old);
-    if (updater.compareAndSet(this, old, n)) {
-      GCAS_Complete(n, ckd);
-      return n.prev == null;
+  // todo: direction is ugly here, any better idea.
+  boolean GCAS(InternalNode old, InternalNode n, CKDTreeMap<V> ckd, Direction direction) {
+    if (direction == Direction.LEFT) {
+      n.WRITE_PREV(old);
+      if (leftUpdater.compareAndSet(this, old, n)) {
+        GCAS_Complete(n, ckd);
+        return n.prev == null;
+      } else {
+        return false;
+      }
     } else {
-      return false;
+      n.WRITE_PREV(old);
+      if (rightUpdater.compareAndSet(this, old, n)) {
+        GCAS_Complete(n, ckd);
+        return n.prev == null;
+      } else {
+        return false;
+      }
     }
   }
 }
