@@ -8,11 +8,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 class FailedNode<V> extends Node {
   InternalNode<V> prev;
 
-  public static final AtomicReferenceFieldUpdater<FailedNode, InternalNode> prevUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(FailedNode.class, InternalNode.class, "prev");
+  static final AtomicReferenceFieldUpdater<FailedNode, Node> prevUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(FailedNode.class, Node.class, "prev");
 
-  FailedNode(InternalNode<V> p) {
+  FailedNode(Node prev) {
     super(null);
-    prevUpdater.set(this, p);
+    prevUpdater.set(this, prev);
   }
 }
