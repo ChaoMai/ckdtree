@@ -35,7 +35,7 @@ class InternalNode<V> extends Node {
     updater.set(this, old);
   }
 
-  InternalNode GCAS_Complete(InternalNode n, CKDTreeMap<V> ckd) {
+  private InternalNode GCAS_Complete(InternalNode n, CKDTreeMap<V> ckd) {
     if (n == null) {
       return null;
     } else {
@@ -47,7 +47,6 @@ class InternalNode<V> extends Node {
         return n;
       } else if (prev instanceof InternalNode) {
         if (root.gen == this.gen) {
-
         }
       }
     }

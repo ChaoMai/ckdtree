@@ -8,14 +8,14 @@ import java.util.Iterator;
  */
 //public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
-  private InternalNode root;
+  private InternalNode<V> root;
   private final boolean readOnly;
 
   CKDTreeMap(final boolean readOnly) {
     this.readOnly = readOnly;
   }
 
-  CKDTreeMap(final InternalNode r, final boolean readOnly) {
+  CKDTreeMap(final InternalNode<V> r, final boolean readOnly) {
     this(readOnly);
     this.root = r;
   }
@@ -24,7 +24,7 @@ public class CKDTreeMap<V> {
     this(false);
   }
 
-  InternalNode readRoot() {
+  InternalNode<V> readRoot() {
     return null;
   }
 
@@ -47,9 +47,9 @@ public class CKDTreeMap<V> {
   }
 
   Object searchKey(double[] key, Gen startGen) {
-    InternalNode gp = null;
+    InternalNode<V> gp = null;
     Update gpupdate = null;
-    InternalNode p = null;
+    InternalNode<V> p = null;
     Update pupdate = null;
     Leaf<V> l;
     int depth = 0;
@@ -57,33 +57,52 @@ public class CKDTreeMap<V> {
     Node cur = root;
 
     while (cur instanceof InternalNode) {
-      // if children are InternalNode, then check their generation.
-      Node left = ((InternalNode) cur).left;
-
-      // only perform GCAS on InternalNode
-      if (left instanceof InternalNode) {
-        if (((InternalNode) left).gen != startGen) {
-          if (((InternalNode) cur).GCAS((InternalNode) left, ((InternalNode) left).renewed(startGen), this)) {
-            //retry on cur
-            continue;
-          } else {
-            return SearchRes.RESTART;
-          }
-        }
-      }
-
-      // todo: finish right node
+//      // if children are InternalNode, then check their generation.
+//      Node left = ((InternalNode) cur).left;
+//
+//      // only perform GCAS on InternalNode
+//      if (left instanceof InternalNode) {
+//        if (((InternalNode) left).gen != startGen) {
+//          if (((InternalNode) cur).GCAS((InternalNode) left, ((InternalNode) left).renewed(startGen), this)) {
+//            //retry on cur
+//            continue;
+//          } else {
+//            return SearchRes.RESTART;
+//          }
+//        }
+//      }
 
       // continue searching
       gp = p;
       gpupdate = pupdate;
-      p = (InternalNode) cur;
+      p = (InternalNode<V>) cur;
       pupdate = p.update;
       depth += p.skippedDepth;
 
       if (keyCompare(key, cur.key, depth++) < 0) {
+        // if left child are InternalNode, then check their generation.
+        Node left = ((InternalNode<V>) cur).left;
+
+        // only perform GCAS on InternalNode
+        if (left instanceof InternalNode) {
+          if (((InternalNode<V>) left).gen != startGen) {
+            // do GCAS, change the left into a new with new gen.
+            if (((InternalNode<V>) cur).GCAS(
+                (InternalNode<V>) left,
+                ((InternalNode<V>) left).renewed(startGen),
+                this)) {
+              // retry on cur
+              continue;
+            } else {
+              return SearchRes.RESTART;
+            }
+          }
+        }
+
         cur = p.left;
       } else {
+        // if left child are InternalNode, then check their generation.
+
         cur = p.right;
       }
     }
