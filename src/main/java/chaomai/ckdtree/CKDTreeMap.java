@@ -33,7 +33,7 @@ public class CKDTreeMap<V> {
   }
 
   InternalNode<V> readRoot() {
-    return null;
+    return root;
   }
 
   boolean keyEqual(double[] k1, double[] k2) {
@@ -65,21 +65,6 @@ public class CKDTreeMap<V> {
     Node cur = root;
 
     while (cur instanceof InternalNode) {
-//      // if children are InternalNode, then check their generation.
-//      Node left = ((InternalNode) cur).left;
-//
-//      // only perform GCAS on InternalNode
-//      if (left instanceof InternalNode) {
-//        if (((InternalNode) left).gen != startGen) {
-//          if (((InternalNode) cur).GCAS((InternalNode) left, ((InternalNode) left).renewed(startGen), this)) {
-//            //retry on cur
-//            continue;
-//          } else {
-//            return SearchRes.RESTART;
-//          }
-//        }
-//      }
-
       // continue searching
       gp = p;
       gpupdate = pupdate;
