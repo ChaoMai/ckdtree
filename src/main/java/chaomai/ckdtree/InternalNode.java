@@ -8,19 +8,22 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 class InternalNode<V> extends Node {
   volatile Node left;
   volatile Node right;
-  final Update update;
+  volatile Update update;
   final int skippedDepth;
   final Gen gen;
   volatile Node prev;
 
-  private static final AtomicReferenceFieldUpdater<InternalNode, Node> prevUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "prev");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> leftUpdater = AtomicReferenceFieldUpdater
+      .newUpdater(InternalNode.class, Node.class, "left");
 
-  private static final AtomicReferenceFieldUpdater<InternalNode, Node> leftUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "left");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> rightUpdater = AtomicReferenceFieldUpdater
+      .newUpdater(InternalNode.class, Node.class, "right");
 
-  private static final AtomicReferenceFieldUpdater<InternalNode, Node> rightUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "right");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater = AtomicReferenceFieldUpdater
+      .newUpdater(InternalNode.class, Update.class, "update");
+
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> prevUpdater = AtomicReferenceFieldUpdater
+      .newUpdater(InternalNode.class, Node.class, "prev");
 
   InternalNode(double[] key, Node left, Node right, Gen gen) {
     this(key, left, right, new Update(), 0, gen);
@@ -33,11 +36,12 @@ class InternalNode<V> extends Node {
     this.update = update;
     this.skippedDepth = skippedDepth;
     this.gen = gen;
+    this.prev = null;
   }
 
   InternalNode<V> renewed(Gen newGen) {
-    // todo: should perform a deep copy here(everything here and things in `update`),
-    // todo: or just create new `update`,
+    // todo: should perform a deep copy here(everything here and things in `update`)
+    // todo: or just create new `update`
     // todo: any optimization?
     return new InternalNode<V>(key, left, right, new Update(), skippedDepth, gen);
   }
@@ -48,6 +52,14 @@ class InternalNode<V> extends Node {
 
   private boolean CAS_RIGHT(InternalNode<V> old, InternalNode<V> n) {
     return rightUpdater.compareAndSet(this, old, n);
+  }
+
+  boolean CAS_UPDATE(Update old, Update n) {
+    return updateUpdater.compareAndSet(this, old, n);
+  }
+
+  Update GET_UPDATE() {
+    return updateUpdater.get(this);
   }
 
   private boolean CAS_PREV(Node old, Node n) {
@@ -104,8 +116,7 @@ class InternalNode<V> extends Node {
   }
 
   // todo: direction is ugly here, any better idea?
-  boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction
-      direction) {
+  boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
     if (direction == Direction.LEFT) {
       n.WRITE_PREV(old);
       if (CAS_LEFT(old, n)) {

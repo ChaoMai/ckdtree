@@ -26,7 +26,7 @@ public class CKDTreeMap<V> {
       leftKey[i] = Double.NEGATIVE_INFINITY;
     }
 
-    root = new InternalNode<V>(key, new Leaf<V>(leftKey), new Leaf<V>(key), new Gen());
+    root = new InternalNode<>(key, new Leaf<V>(leftKey), new Leaf<V>(key), new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -49,10 +49,12 @@ public class CKDTreeMap<V> {
     return Arrays.equals(k1, k2);
   }
 
-  int keyCompare(double[] k1, double[] k2, int axis) {
+  int keyCompare(double[] k1, double[] k2, int depth) {
     if (Arrays.equals(k1, k2)) {
       return 0;
     }
+
+    int axis = depth % this.dimension;
 
     if (k1[axis] < k2[axis]) {
       return -1;
@@ -63,7 +65,7 @@ public class CKDTreeMap<V> {
     }
   }
 
-  Object searchKey(double[] key, Gen startGen) {
+  private Object searchKey(double[] key, Gen startGen) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
     InternalNode<V> p = null;
@@ -71,7 +73,7 @@ public class CKDTreeMap<V> {
     Leaf<V> l;
     int depth = 0;
 
-    Node cur = root;
+    Node cur = root.left;
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -89,11 +91,9 @@ public class CKDTreeMap<V> {
         if (left instanceof InternalNode) {
           if (((InternalNode<V>) left).gen != startGen) {
             // do GCAS, change the left into a new with new gen.
-            if (((InternalNode<V>) cur).GCAS(
-                (InternalNode<V>) left,
-                ((InternalNode<V>) left).renewed(startGen),
-                this,
-                Direction.LEFT)) {
+            if (((InternalNode<V>) cur)
+                .GCAS((InternalNode<V>) left, ((InternalNode<V>) left).renewed(startGen), this,
+                      Direction.LEFT)) {
               // retry on cur
               continue;
             } else {
@@ -105,15 +105,13 @@ public class CKDTreeMap<V> {
         cur = p.left;
       } else {
         // if right child are InternalNode, then check their generation.
-        Node right = ((InternalNode<V>) cur).left;
+        Node right = ((InternalNode<V>) cur).right;
 
         if (right instanceof InternalNode) {
           if (((InternalNode) right).gen != startGen) {
-            if (((InternalNode<V>) cur).GCAS(
-                (InternalNode<V>) right,
-                ((InternalNode<V>) right).renewed(startGen),
-                this,
-                Direction.RIGHT)) {
+            if (((InternalNode<V>) cur)
+                .GCAS((InternalNode<V>) right, ((InternalNode<V>) right).renewed(startGen), this,
+                      Direction.RIGHT)) {
               continue;
             } else {
               return SearchRes.RESTART;
@@ -128,7 +126,7 @@ public class CKDTreeMap<V> {
     // todo: check type?
     l = (Leaf<V>) cur;
 
-    return new SearchRes<V>(gp, gpupdate, p, pupdate, l, depth);
+    return new SearchRes<>(gp, gpupdate, p, pupdate, l, depth);
   }
 
   SearchRes<V> search(double[] key) {
@@ -144,7 +142,54 @@ public class CKDTreeMap<V> {
     }
   }
 
-  boolean insert(double[] key, V vale) {
+  private InternalNode<V> createSubTree(double[] k, V v, Leaf<V> l, int depth) {
+    int skip = 0;
+
+    //    don't find much help of this.
+    //    int compareResult;
+    //    while ((compareResult = keyCompare(k, l.key, depth++)) == 0) {
+    //      ++skip;
+    //    }
+
+    Leaf<V> left;
+    Leaf<V> right;
+    double[] maxKey;
+    if (keyCompare(k, l.key, depth) < 0) {
+      maxKey = l.key;
+      left = new Leaf<>(k, v);
+      right = new Leaf<>(l.key, l.value);
+    } else {
+      maxKey = k;
+      left = new Leaf<>(l.key, l.value);
+      right = new Leaf<>(k, v);
+    }
+
+    return new InternalNode<>(maxKey, left, right, root.gen);
+  }
+
+  private void help(Update update) {
+    switch (update.state) {
+      case IFLAG: {
+        helpInsert((InsertInfo<V>) update.info);
+        break;
+      }
+      case DFLAG: {
+        break;
+      }
+      case MARK1: {
+        break;
+      }
+      case MARK2: {
+        break;
+      }
+    }
+  }
+
+  private void helpInsert(InsertInfo<V> op) {
+    // todo: finish this. it will be necessary to decide the direction.
+  }
+
+  boolean insert(double[] key, V value) {
     while (true) {
       SearchRes<V> r = search(key);
 
@@ -154,13 +199,33 @@ public class CKDTreeMap<V> {
 
       if (r.pupdate.state != State.CLEAN) {
         // todo: change into helping it
-        continue;
+        return false;
+      } else {
+        InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
+
+        // IFlag
+        InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
+        Update nu = new Update(State.IFLAG, op);
+
+        if (r.p.CAS_UPDATE(r.pupdate, nu)) {
+          helpInsert(op);
+          return true;
+        } else {
+          Update update = r.p.GET_UPDATE();
+          help(update);
+        }
       }
     }
   }
 
   public boolean add(double[] key, V value) {
-    return insert(key, value);
+    while (true) {
+      if (!insert(key, value)) {
+        continue;
+      } else {
+        return true;
+      }
+    }
   }
 
   public void clear() {

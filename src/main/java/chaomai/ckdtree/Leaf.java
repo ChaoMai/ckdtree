@@ -14,4 +14,15 @@ class Leaf<V> extends Node {
     super(key);
     this.value = value;
   }
+
+  @Override
+  public String toString() {
+    String res = "leaf: ";
+
+    for (int i = 0; i < key.length; ++i) {
+      res += key[i] + " ";
+    }
+    res += key;
+    return res;
+  }
 }
