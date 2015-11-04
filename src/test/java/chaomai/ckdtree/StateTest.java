@@ -5,7 +5,7 @@ import org.junit.Test;
 /**
  * Created by chaomai on 11/1/15.
  */
-public class TestState {
+public class StateTest {
   @Test
   public void testConstructor() {
     class B {

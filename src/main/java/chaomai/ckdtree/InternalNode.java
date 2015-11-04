@@ -6,22 +6,25 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by chaomai on 11/1/15.
  */
 class InternalNode<V> extends Node {
-  Node left;
-  Node right;
+  volatile Node left;
+  volatile Node right;
   final Update update;
   final int skippedDepth;
   final Gen gen;
+  volatile Node prev;
 
-  Node prev;
-
-  static final AtomicReferenceFieldUpdater<InternalNode, Node> prevUpdater =
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> prevUpdater =
       AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "prev");
 
-  static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> leftUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, InternalNode.class, "left");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> leftUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "left");
 
-  static final AtomicReferenceFieldUpdater<InternalNode, InternalNode> rightUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, InternalNode.class, "right");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Node> rightUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Node.class, "right");
+
+  InternalNode(double[] key, Node left, Node right, Gen gen) {
+    this(key, left, right, new Update(), 0, gen);
+  }
 
   InternalNode(double[] key, Node left, Node right, Update update, int skippedDepth, Gen gen) {
     super(key);
@@ -39,28 +42,20 @@ class InternalNode<V> extends Node {
     return new InternalNode<V>(key, left, right, new Update(), skippedDepth, gen);
   }
 
-  boolean CAS_LEFT(InternalNode<V> old, InternalNode<V> n) {
+  private boolean CAS_LEFT(InternalNode<V> old, InternalNode<V> n) {
     return leftUpdater.compareAndSet(this, old, n);
   }
 
-  boolean CAS_RIGHT(InternalNode<V> old, InternalNode<V> n) {
+  private boolean CAS_RIGHT(InternalNode<V> old, InternalNode<V> n) {
     return rightUpdater.compareAndSet(this, old, n);
   }
 
-  boolean CAS_PREV(Node old, Node n) {
+  private boolean CAS_PREV(Node old, Node n) {
     return prevUpdater.compareAndSet(this, old, n);
   }
 
-  void WRITE_PREV(InternalNode<V> old) {
+  private void WRITE_PREV(InternalNode<V> old) {
     prevUpdater.set(this, old);
-  }
-
-  Node GetChildNode(Direction direction) {
-    if (direction == Direction.LEFT) {
-      return this.left;
-    } else {
-      return this.right;
-    }
   }
 
   private InternalNode<V> GCAS_Complete(InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
@@ -72,7 +67,9 @@ class InternalNode<V> extends Node {
 
       if (prev == null) {
         return n;
-      } else if (prev instanceof FailedNode) {
+      }
+
+      if (prev instanceof FailedNode) {
         FailedNode<V> fn = (FailedNode<V>) prev;
         if (direction == Direction.LEFT) {
           if (CAS_LEFT(n, fn.prev)) {
@@ -107,7 +104,6 @@ class InternalNode<V> extends Node {
   }
 
   // todo: direction is ugly here, any better idea?
-
   boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction
       direction) {
     if (direction == Direction.LEFT) {

@@ -4,13 +4,14 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Created by chaomai on 11/1/15.
  */
-public class TestMisc {
+public class MiscTest {
+  double delta = 0.001;
+
   @Test
   public void testArray() {
     Object o;
@@ -162,5 +163,19 @@ public class TestMisc {
 
     D<V> d = new D<V>(9);
     assertEquals(3, d.m(a));
+  }
+
+  @Test
+  public void testDoubleMax() {
+    //assertEquals(Double.MAX_VALUE, Double.POSITIVE_INFINITY, 0.0001);
+    assertEquals(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY - 1, delta);
+  }
+
+  @Test
+  public void testArrayAssignment() {
+    double[] key = {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY};
+    double[] leftKey = key.clone();
+    leftKey[0] = Double.NEGATIVE_INFINITY;
+    assertFalse(Arrays.equals(key, leftKey));
   }
 }

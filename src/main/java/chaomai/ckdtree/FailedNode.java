@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by chaomai on 11/3/15.
  */
 class FailedNode<V> extends Node {
-  InternalNode<V> prev;
+  volatile InternalNode<V> prev;
 
   static final AtomicReferenceFieldUpdater<FailedNode, Node> prevUpdater =
       AtomicReferenceFieldUpdater.newUpdater(FailedNode.class, Node.class, "prev");

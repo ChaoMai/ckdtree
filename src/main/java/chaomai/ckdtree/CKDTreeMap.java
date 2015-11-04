@@ -9,19 +9,28 @@ import java.util.Iterator;
 //public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
   private InternalNode<V> root;
+  private final int dimension;
   private final boolean readOnly;
 
-  CKDTreeMap(final boolean readOnly) {
+  CKDTreeMap(final boolean readOnly, final int dimension) {
     this.readOnly = readOnly;
+    this.dimension = dimension;
+
+    double[] key = new double[dimension];
+    for (int i = 0; i < dimension; ++i) {
+      key[i] = Double.POSITIVE_INFINITY;
+    }
+
+    double[] leftKey = new double[dimension];
+    for (int i = 0; i < dimension; ++i) {
+      leftKey[i] = Double.NEGATIVE_INFINITY;
+    }
+
+    root = new InternalNode<V>(key, new Leaf<V>(leftKey), new Leaf<V>(key), new Gen());
   }
 
-  CKDTreeMap(final InternalNode<V> r, final boolean readOnly) {
-    this(readOnly);
-    this.root = r;
-  }
-
-  CKDTreeMap() {
-    this(false);
+  public CKDTreeMap(final int dimension) {
+    this(false, dimension);
   }
 
   boolean isReadOnly() {
@@ -95,14 +104,29 @@ public class CKDTreeMap<V> {
 
         cur = p.left;
       } else {
-        // if left child are InternalNode, then check their generation.
+        // if right child are InternalNode, then check their generation.
+        Node right = ((InternalNode<V>) cur).left;
+
+        if (right instanceof InternalNode) {
+          if (((InternalNode) right).gen != startGen) {
+            if (((InternalNode<V>) cur).GCAS(
+                (InternalNode<V>) right,
+                ((InternalNode<V>) right).renewed(startGen),
+                this,
+                Direction.RIGHT)) {
+              continue;
+            } else {
+              return SearchRes.RESTART;
+            }
+          }
+        }
 
         cur = p.right;
       }
     }
 
     // todo: check type?
-    l = (Leaf) cur;
+    l = (Leaf<V>) cur;
 
     return new SearchRes<V>(gp, gpupdate, p, pupdate, l, depth);
   }
@@ -118,11 +142,25 @@ public class CKDTreeMap<V> {
         return (SearchRes<V>) res;
       }
     }
-
   }
 
-  public boolean add(Object key, V value) {
-    return false;
+  boolean insert(double[] key, V vale) {
+    while (true) {
+      SearchRes<V> r = search(key);
+
+      if (keyEqual(r.l.key, key)) {
+        return false;
+      }
+
+      if (r.pupdate.state != State.CLEAN) {
+        // todo: change into helping it
+        continue;
+      }
+    }
+  }
+
+  public boolean add(double[] key, V value) {
+    return insert(key, value);
   }
 
   public void clear() {

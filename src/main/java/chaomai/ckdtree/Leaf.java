@@ -6,6 +6,10 @@ package chaomai.ckdtree;
 class Leaf<V> extends Node {
   V value;
 
+  Leaf(double[] key) {
+    super(key);
+  }
+
   Leaf(double[] key, V value) {
     super(key);
     this.value = value;
