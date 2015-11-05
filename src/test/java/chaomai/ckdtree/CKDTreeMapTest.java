@@ -19,9 +19,9 @@ public class CKDTreeMapTest {
     Assert.assertEquals(null, root.right);
   }
 
-  private void search1() {
+  private void searchDummy() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double k1[] = {Double.POSITIVE_INFINITY};
+    double[] k1 = {Double.POSITIVE_INFINITY};
 
     Object res1 = ckd.search(k1);
 
@@ -30,27 +30,52 @@ public class CKDTreeMapTest {
 
   @Test
   public void testSearch() throws Exception {
-    search1();
+    searchDummy();
   }
 
   private void addOneKey() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double k1[] = {1};
+    double[] k1 = {1};
     ckd.add(k1, 1);
+
+    Assert.assertTrue(ckd.contains(k1));
+
     Object res = ckd.search(k1);
     Assert.assertNotEquals(null, res);
 
     SearchRes<Integer> r = (SearchRes<Integer>) res;
-    Assert.assertEquals(k1, r.l.key);
+    Assert.assertArrayEquals(k1, r.l.key, delta);
+
+    System.out.println(ckd.toString());
   }
 
-  private void addMultipleKey() {
+  private void addMultipleKeys() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(3);
+    int samples = 5;
+    int dimension = 3;
+    double[][] array = Utilties.generateRandomArrays(samples, dimension);
 
+    for (int i = 0; i < samples; ++i) {
+      ckd.add(array[i], i);
+    }
+
+    //    System.out.println(ckd.toString());
+
+    //    for (int i = 0; i < samples; ++i) {
+    //      double[] k = array[i];
+    //      Assert.assertTrue(ckd.contains(k));
+    //
+    //      Object res = ckd.search(k);
+    //      Assert.assertNotEquals(null, res);
+    //
+    //      SearchRes<Integer> r = (SearchRes<Integer>) res;
+    //      Assert.assertArrayEquals(k, r.l.key, delta);
+    //    }
   }
 
   @Test
   public void testAdd() throws Exception {
     addOneKey();
-    addMultipleKey();
+    addMultipleKeys();
   }
 }

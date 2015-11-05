@@ -17,13 +17,13 @@ class Leaf<V> extends Node<V> {
 
   @Override
   public String toString() {
-    String res = "leaf: ";
+    String res = "leaf: <[";
 
     for (double d : key) {
       res += d + " ";
     }
 
-    res += "," + value;
+    res += "]," + value + ">";
     return res;
   }
 }

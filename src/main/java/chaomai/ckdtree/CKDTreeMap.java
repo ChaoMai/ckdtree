@@ -30,7 +30,8 @@ public class CKDTreeMap<V> {
       rootKey[i] = Double.NEGATIVE_INFINITY;
     }
 
-    root = new InternalNode<>(rootKey, new Leaf<>(key), null, new Gen());
+    // todo: setup the initial skipped depth
+    root = new InternalNode<>(rootKey, new Leaf<>(key), null, -1, new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -77,6 +78,7 @@ public class CKDTreeMap<V> {
     Leaf<V> l;
     int depth = 0;
 
+    // todo: problem here, should be set according to initial skipped depth on root
     Node<V> cur = root.left;
 
     while (cur instanceof InternalNode) {
@@ -195,6 +197,8 @@ public class CKDTreeMap<V> {
     } else {
       parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
     }
+
+    size.getAndAdd(1);
   }
 
   boolean insert(double[] key, V value) {
@@ -267,5 +271,10 @@ public class CKDTreeMap<V> {
 
   public CKDTreeMap<V> snapshot() {
     return null;
+  }
+
+  @Override
+  public String toString() {
+    return root.toString();
   }
 }

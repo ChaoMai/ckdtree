@@ -121,4 +121,29 @@ abstract class Node<V> {
       }
     }
   }
+
+  @Override
+  public String toString() {
+    String res = "key: [";
+
+    for (double d : key) {
+      res += d + " ";
+    }
+
+    res += "]\n";
+
+    if (left != null) {
+      res += "left: " + left.toString() + "\n";
+    } else {
+      res += "left: null\n";
+    }
+
+    if (right != null) {
+      res += "right: " + right.toString() + "\n";
+    } else {
+      res += "right: null\n";
+    }
+
+    return res;
+  }
 }
