@@ -22,16 +22,10 @@ public class CKDTreeMap<V> {
 
     double[] key = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
-      key[i] = Double.POSITIVE_INFINITY;
+      key[i] = Double.NEGATIVE_INFINITY;
     }
 
-    double[] rootKey = new double[dimension];
-    for (int i = 0; i < dimension; ++i) {
-      rootKey[i] = Double.NEGATIVE_INFINITY;
-    }
-
-    // todo: setup the initial skipped depth
-    root = new InternalNode<>(rootKey, new Leaf<>(key), null, -1, new Gen());
+    root = new InternalNode<>(key, null, new Leaf<>(key), new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -78,8 +72,7 @@ public class CKDTreeMap<V> {
     Leaf<V> l;
     int depth = 0;
 
-    // todo: problem here, should be set according to initial skipped depth on root
-    Node<V> cur = root.left;
+    Node<V> cur = root.right;
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -89,7 +82,7 @@ public class CKDTreeMap<V> {
       pupdate = p.GET_UPDATE();
       depth += p.skippedDepth;
 
-      if (keyCompare(key, cur.key, depth++) <= 0) {
+      if (keyCompare(key, cur.key, depth++) < 0) {
         // if left child are InternalNode, then check their generation.
         Node<V> left = cur.left;
 
@@ -158,7 +151,7 @@ public class CKDTreeMap<V> {
     Leaf<V> right;
     double[] maxKey;
 
-    if (keyCompare(k, l.key, depth) <= 0) {
+    if (keyCompare(k, l.key, depth) < 0) {
       maxKey = l.key;
       left = new Leaf<>(k, v);
       right = new Leaf<>(l.key, l.value);
@@ -191,14 +184,16 @@ public class CKDTreeMap<V> {
 
   private void helpInsert(Update update) {
     InsertInfo<V> info = (InsertInfo<V>) update.info;
-    Node<V> parent = (Node<V>) info.p;
-    if (keyCompare(info.l.key, info.newInternal.key, update.depth) <= 0) {
-      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
-    } else {
+    InternalNode<V> parent = info.p;
+    if (keyCompare(parent.key, info.newInternal.key, update.depth) < 0) {
       parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
+    } else {
+      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
     }
 
     size.getAndAdd(1);
+
+    parent.CAS_UPDATE(update, new Update());
   }
 
   boolean insert(double[] key, V value) {
@@ -210,23 +205,24 @@ public class CKDTreeMap<V> {
       }
 
       if (r.pupdate.state != State.CLEAN) {
-        // todo: change into helping it
-        return false;
-      } else {
-        InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
-
-        // IFlag
-        InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
-        Update nu = new Update(State.IFLAG, op, r.leafDepth);
-
-        if (r.p.CAS_UPDATE(r.pupdate, nu)) {
-          helpInsert(nu);
-          return true;
-        } else {
-          Update update = r.p.GET_UPDATE();
-          help(update);
-        }
+        help(r.pupdate);
+        continue;
       }
+
+      InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
+
+      // IFlag
+      InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
+      Update nu = new Update(State.IFLAG, op, r.leafDepth);
+
+      if (r.p.CAS_UPDATE(r.pupdate, nu)) {
+        helpInsert(nu);
+        return true;
+      } else {
+        Update update = r.p.GET_UPDATE();
+        help(update);
+      }
+
     }
   }
 
@@ -275,6 +271,6 @@ public class CKDTreeMap<V> {
 
   @Override
   public String toString() {
-    return root.toString();
+    return this.root.toString();
   }
 }

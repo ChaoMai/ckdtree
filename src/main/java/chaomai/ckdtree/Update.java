@@ -19,4 +19,9 @@ class Update {
     this.info = info;
     this.depth = depth;
   }
+
+  @Override
+  public String toString() {
+    return "state: " + this.state;
+  }
 }

@@ -126,20 +126,20 @@ abstract class Node<V> {
   public String toString() {
     String res = "key: [";
 
-    for (double d : key) {
+    for (double d : this.key) {
       res += d + " ";
     }
 
     res += "]\n";
 
-    if (left != null) {
-      res += "left: " + left.toString() + "\n";
+    if (this.left != null) {
+      res += "left: " + this.left.toString() + "\n";
     } else {
       res += "left: null\n";
     }
 
-    if (right != null) {
-      res += "right: " + right.toString() + "\n";
+    if (this.right != null) {
+      res += "right: " + this.right.toString() + "\n";
     } else {
       res += "right: null\n";
     }

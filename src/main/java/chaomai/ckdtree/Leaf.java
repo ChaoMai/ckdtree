@@ -19,11 +19,11 @@ class Leaf<V> extends Node<V> {
   public String toString() {
     String res = "leaf: <[";
 
-    for (double d : key) {
+    for (double d : this.key) {
       res += d + " ";
     }
 
-    res += "]," + value + ">";
+    res += "]," + this.value + ">";
     return res;
   }
 }

@@ -16,10 +16,6 @@ class InternalNode<V> extends Node<V> {
     this(key, left, right, new Update(), 0, gen);
   }
 
-  InternalNode(double[] key, Node<V> left, Node<V> right, int skippedDepth, Gen gen) {
-    this(key, left, right, new Update(), skippedDepth, gen);
-  }
-
   InternalNode(double[] key, Node<V> left, Node<V> right, Update update, int skippedDepth,
                Gen gen) {
     super(key, left, right, gen);
@@ -46,7 +42,7 @@ class InternalNode<V> extends Node<V> {
   public String toString() {
     String res = "key: [";
 
-    for (double d : key) {
+    for (double d : this.key) {
       res += d + " ";
     }
 
