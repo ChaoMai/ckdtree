@@ -11,7 +11,6 @@ class InternalNode<V> extends Node {
   volatile Update update;
   final int skippedDepth;
   final Gen gen;
-  volatile Node prev;
 
   private static final AtomicReferenceFieldUpdater<InternalNode, Node> leftUpdater = AtomicReferenceFieldUpdater
       .newUpdater(InternalNode.class, Node.class, "left");
@@ -21,9 +20,6 @@ class InternalNode<V> extends Node {
 
   private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater = AtomicReferenceFieldUpdater
       .newUpdater(InternalNode.class, Update.class, "update");
-
-  private static final AtomicReferenceFieldUpdater<InternalNode, Node> prevUpdater = AtomicReferenceFieldUpdater
-      .newUpdater(InternalNode.class, Node.class, "prev");
 
   InternalNode(double[] key, Node left, Node right, Gen gen) {
     this(key, left, right, new Update(), 0, gen);
@@ -43,7 +39,7 @@ class InternalNode<V> extends Node {
     // todo: should perform a deep copy here(everything here and things in `update`)
     // todo: or just create new `update`
     // todo: any optimization?
-    return new InternalNode<V>(key, left, right, new Update(), skippedDepth, gen);
+    return new InternalNode<V>(key, left, right, new Update(), skippedDepth, newGen);
   }
 
   private boolean CAS_LEFT(InternalNode<V> old, InternalNode<V> n) {
@@ -62,73 +58,66 @@ class InternalNode<V> extends Node {
     return updateUpdater.get(this);
   }
 
-  private boolean CAS_PREV(Node old, Node n) {
-    return prevUpdater.compareAndSet(this, old, n);
-  }
-
-  private void WRITE_PREV(InternalNode<V> old) {
-    prevUpdater.set(this, old);
-  }
-
-  private InternalNode<V> GCAS_COMPLETE(InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
-    if (n == null) {
-      return null;
-    } else {
-      Node prev = n.prev;
-      InternalNode<V> root = ckd.readRoot();
-
-      if (prev == null) {
-        return n;
-      }
-
-      if (prev instanceof FailedNode) {
-        FailedNode<V> fn = (FailedNode<V>) prev;
-        if (direction == Direction.LEFT) {
-          if (CAS_LEFT(n, fn.prev)) {
-            return fn.prev;
-          } else {
-            return GCAS_COMPLETE(n, ckd, direction);
-          }
-        } else {
-          if (CAS_RIGHT(n, fn.prev)) {
-            return fn.prev;
-          } else {
-            return GCAS_COMPLETE(n, ckd, direction);
-          }
-        }
-      } else if (prev instanceof InternalNode) {
-        if (root.gen == gen && ckd.nonReadOnly()) {
-          if (n.CAS_PREV(prev, null)) {
-            return n;
-          } else {
-            return GCAS_COMPLETE(n, ckd, direction);
-          }
-        } else {
-          n.CAS_PREV(prev, new FailedNode<V>(prev));
-          return GCAS_COMPLETE(n, ckd, direction);
-        }
-      }
-    }
-    throw new RuntimeException("Should not happen");
-  }
-
-  boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
-    if (direction == Direction.LEFT) {
-      n.WRITE_PREV(old);
-      if (CAS_LEFT(old, n)) {
-        GCAS_COMPLETE(n, ckd, direction);
-        return n.prev == null;
-      } else {
-        return false;
-      }
-    } else {
-      n.WRITE_PREV(old);
-      if (CAS_RIGHT(old, n)) {
-        GCAS_COMPLETE(n, ckd, direction);
-        return n.prev == null;
-      } else {
-        return false;
-      }
-    }
-  }
+  // todo: gcas should be put in node.
+  //  private InternalNode<V> GCAS_COMPLETE(InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
+  //    if (n == null) {
+  //      return null;
+  //    } else {
+  //      Node prev = n.prev;
+  //      InternalNode<V> root = ckd.readRoot();
+  //
+  //      if (prev == null) {
+  //        return n;
+  //      }
+  //
+  //      if (prev instanceof FailedNode) {
+  //        FailedNode<V> fn = (FailedNode<V>) prev;
+  //        if (direction == Direction.LEFT) {
+  //          if (CAS_LEFT(n, fn.prev)) {
+  //            return fn.prev;
+  //          } else {
+  //            return GCAS_COMPLETE(n, ckd, direction);
+  //          }
+  //        } else {
+  //          if (CAS_RIGHT(n, fn.prev)) {
+  //            return fn.prev;
+  //          } else {
+  //            return GCAS_COMPLETE(n, ckd, direction);
+  //          }
+  //        }
+  //      } else if (prev instanceof InternalNode) {
+  //        if (root.gen == gen && ckd.nonReadOnly()) {
+  //          if (n.CAS_PREV(prev, null)) {
+  //            return n;
+  //          } else {
+  //            return GCAS_COMPLETE(n, ckd, direction);
+  //          }
+  //        } else {
+  //          n.CAS_PREV(prev, new FailedNode<V>(prev));
+  //          return GCAS_COMPLETE(n, ckd, direction);
+  //        }
+  //      }
+  //    }
+  //    throw new RuntimeException("Should not happen");
+  //  }
+  //
+  //  boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
+  //    if (direction == Direction.LEFT) {
+  //      n.WRITE_PREV(old);
+  //      if (CAS_LEFT(old, n)) {
+  //        GCAS_COMPLETE(n, ckd, direction);
+  //        return n.prev == null;
+  //      } else {
+  //        return false;
+  //      }
+  //    } else {
+  //      n.WRITE_PREV(old);
+  //      if (CAS_RIGHT(old, n)) {
+  //        GCAS_COMPLETE(n, ckd, direction);
+  //        return n.prev == null;
+  //      } else {
+  //        return false;
+  //      }
+  //    }
+  //  }
 }
