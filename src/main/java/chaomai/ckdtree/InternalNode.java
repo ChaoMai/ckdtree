@@ -87,14 +87,12 @@ class InternalNode<V> extends Node {
           if (CAS_LEFT(n, fn.prev)) {
             return fn.prev;
           } else {
-            // todo: is it necessary to GCAS_Complete(left, ...) or GCAS_Complete(left, ...)?
             return GCAS_Complete(n, ckd, direction);
           }
         } else {
           if (CAS_RIGHT(n, fn.prev)) {
             return fn.prev;
           } else {
-            // todo: is it necessary to GCAS_Complete(left, ...) or GCAS_Complete(right, ...)?
             return GCAS_Complete(n, ckd, direction);
           }
         }
@@ -107,7 +105,6 @@ class InternalNode<V> extends Node {
           }
         } else {
           n.CAS_PREV(prev, new FailedNode<V>(prev));
-          // todo: is it necessary to GCAS_Complete(left, ...) or GCAS_Complete(right, ...)?
           return GCAS_Complete(n, ckd, direction);
         }
       }
@@ -115,7 +112,6 @@ class InternalNode<V> extends Node {
     throw new RuntimeException("Should not happen");
   }
 
-  // todo: direction is ugly here, any better idea?
   boolean GCAS(InternalNode<V> old, InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
     if (direction == Direction.LEFT) {
       n.WRITE_PREV(old);
