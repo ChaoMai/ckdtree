@@ -87,7 +87,7 @@ class InternalNode<V> extends Node {
           if (CAS_LEFT(n, fn.prev)) {
             return fn.prev;
           } else {
-            // todo: is it necessary to GCAS_Complete(left, ...) or GCAS_Complete(right, ...)?
+            // todo: is it necessary to GCAS_Complete(left, ...) or GCAS_Complete(left, ...)?
             return GCAS_Complete(n, ckd, direction);
           }
         } else {

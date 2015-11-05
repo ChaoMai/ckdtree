@@ -103,6 +103,7 @@ public class CKDTreeMap<V> {
         }
 
         cur = p.left;
+
       } else {
         // if right child are InternalNode, then check their generation.
         Node right = ((InternalNode<V>) cur).right;
@@ -186,7 +187,6 @@ public class CKDTreeMap<V> {
   }
 
   private void helpInsert(InsertInfo<V> op) {
-    // todo: finish this. it will be necessary to decide the direction.
   }
 
   boolean insert(double[] key, V value) {
