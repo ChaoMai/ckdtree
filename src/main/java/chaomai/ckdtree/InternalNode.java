@@ -70,7 +70,7 @@ class InternalNode<V> extends Node {
     prevUpdater.set(this, old);
   }
 
-  private InternalNode<V> GCAS_Complete(InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
+  private InternalNode<V> GCAS_COMPLETE(InternalNode<V> n, CKDTreeMap<V> ckd, Direction direction) {
     if (n == null) {
       return null;
     } else {
@@ -87,13 +87,13 @@ class InternalNode<V> extends Node {
           if (CAS_LEFT(n, fn.prev)) {
             return fn.prev;
           } else {
-            return GCAS_Complete(n, ckd, direction);
+            return GCAS_COMPLETE(n, ckd, direction);
           }
         } else {
           if (CAS_RIGHT(n, fn.prev)) {
             return fn.prev;
           } else {
-            return GCAS_Complete(n, ckd, direction);
+            return GCAS_COMPLETE(n, ckd, direction);
           }
         }
       } else if (prev instanceof InternalNode) {
@@ -101,11 +101,11 @@ class InternalNode<V> extends Node {
           if (n.CAS_PREV(prev, null)) {
             return n;
           } else {
-            return GCAS_Complete(n, ckd, direction);
+            return GCAS_COMPLETE(n, ckd, direction);
           }
         } else {
           n.CAS_PREV(prev, new FailedNode<V>(prev));
-          return GCAS_Complete(n, ckd, direction);
+          return GCAS_COMPLETE(n, ckd, direction);
         }
       }
     }
@@ -116,7 +116,7 @@ class InternalNode<V> extends Node {
     if (direction == Direction.LEFT) {
       n.WRITE_PREV(old);
       if (CAS_LEFT(old, n)) {
-        GCAS_Complete(n, ckd, direction);
+        GCAS_COMPLETE(n, ckd, direction);
         return n.prev == null;
       } else {
         return false;
@@ -124,7 +124,7 @@ class InternalNode<V> extends Node {
     } else {
       n.WRITE_PREV(old);
       if (CAS_RIGHT(old, n)) {
-        GCAS_Complete(n, ckd, direction);
+        GCAS_COMPLETE(n, ckd, direction);
         return n.prev == null;
       } else {
         return false;

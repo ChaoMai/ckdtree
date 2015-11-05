@@ -2,6 +2,7 @@ package chaomai.ckdtree;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by chaomai on 11/1/15.
@@ -11,6 +12,7 @@ public class CKDTreeMap<V> {
   private InternalNode<V> root;
   private final int dimension;
   private final boolean readOnly;
+  private final AtomicInteger size = new AtomicInteger();
 
   CKDTreeMap(final boolean readOnly, final int dimension) {
     this.readOnly = readOnly;
@@ -144,8 +146,7 @@ public class CKDTreeMap<V> {
   }
 
   private InternalNode<V> createSubTree(double[] k, V v, Leaf<V> l, int depth) {
-    int skip = 0;
-
+    //    int skip = 0;
     //    don't find much help of this.
     //    int compareResult;
     //    while ((compareResult = keyCompare(k, l.key, depth++)) == 0) {
@@ -171,7 +172,7 @@ public class CKDTreeMap<V> {
   private void help(Update update) {
     switch (update.state) {
       case IFLAG: {
-        helpInsert((InsertInfo<V>) update.info);
+        helpInsert(update);
         break;
       }
       case DFLAG: {
@@ -186,7 +187,14 @@ public class CKDTreeMap<V> {
     }
   }
 
-  private void helpInsert(InsertInfo<V> op) {
+  private void helpInsert(Update update) {
+    InsertInfo<V> info = (InsertInfo<V>) update.info;
+    if (keyCompare(info.l.key, info.newInternal.key, update.depth) < 0) {
+      // at left
+      //      info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT);
+    } else {
+      // at right
+    }
   }
 
   boolean insert(double[] key, V value) {
@@ -205,10 +213,10 @@ public class CKDTreeMap<V> {
 
         // IFlag
         InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
-        Update nu = new Update(State.IFLAG, op);
+        Update nu = new Update(State.IFLAG, op, r.leafDepth);
 
         if (r.p.CAS_UPDATE(r.pupdate, nu)) {
-          helpInsert(op);
+          helpInsert(nu);
           return true;
         } else {
           Update update = r.p.GET_UPDATE();
@@ -254,7 +262,7 @@ public class CKDTreeMap<V> {
   }
 
   public int size() {
-    return 0;
+    return this.size.get();
   }
 
   public CKDTreeMap<V> snapshot() {
