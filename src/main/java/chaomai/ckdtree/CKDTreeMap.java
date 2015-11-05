@@ -7,6 +7,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by chaomai on 11/1/15.
  */
+
+@SuppressWarnings({"unused"})
 //public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
   private InternalNode<V> root;
@@ -23,12 +25,12 @@ public class CKDTreeMap<V> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    double[] leftKey = new double[dimension];
+    double[] rootKey = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
-      leftKey[i] = Double.NEGATIVE_INFINITY;
+      rootKey[i] = Double.NEGATIVE_INFINITY;
     }
 
-    root = new InternalNode<>(key, new Leaf<V>(leftKey), new Leaf<V>(key), new Gen());
+    root = new InternalNode<>(rootKey, new Leaf<>(key), null, new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -70,32 +72,30 @@ public class CKDTreeMap<V> {
   private Object searchKey(double[] key, Gen startGen) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
-    InternalNode<V> p = null;
-    Update pupdate = null;
+    InternalNode<V> p = root;
+    Update pupdate = root.GET_UPDATE();
     Leaf<V> l;
     int depth = 0;
 
-    Node cur = root.left;
+    Node<V> cur = root.left;
 
     while (cur instanceof InternalNode) {
       // continue searching
       gp = p;
       gpupdate = pupdate;
       p = (InternalNode<V>) cur;
-      pupdate = p.update;
+      pupdate = p.GET_UPDATE();
       depth += p.skippedDepth;
 
-      if (keyCompare(key, cur.key, depth++) < 0) {
+      if (keyCompare(key, cur.key, depth++) <= 0) {
         // if left child are InternalNode, then check their generation.
-        Node left = ((InternalNode<V>) cur).left;
+        Node<V> left = cur.left;
 
         // only perform GCAS on InternalNode
         if (left instanceof InternalNode) {
-          if (((InternalNode<V>) left).gen != startGen) {
+          if (left.gen != startGen) {
             // do GCAS, change the left into a new with new gen.
-            if (((InternalNode<V>) cur)
-                .GCAS((InternalNode<V>) left, ((InternalNode<V>) left).renewed(startGen), this,
-                      Direction.LEFT)) {
+            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen), this, Direction.LEFT)) {
               // retry on cur
               continue;
             } else {
@@ -108,13 +108,12 @@ public class CKDTreeMap<V> {
 
       } else {
         // if right child are InternalNode, then check their generation.
-        Node right = ((InternalNode<V>) cur).right;
+        Node<V> right = ((InternalNode<V>) cur).right;
 
         if (right instanceof InternalNode) {
           if (((InternalNode) right).gen != startGen) {
-            if (((InternalNode<V>) cur)
-                .GCAS((InternalNode<V>) right, ((InternalNode<V>) right).renewed(startGen), this,
-                      Direction.RIGHT)) {
+            if (cur
+                .GCAS(right, ((InternalNode<V>) right).renewed(startGen), this, Direction.RIGHT)) {
               continue;
             } else {
               return SearchRes.RESTART;
@@ -156,7 +155,8 @@ public class CKDTreeMap<V> {
     Leaf<V> left;
     Leaf<V> right;
     double[] maxKey;
-    if (keyCompare(k, l.key, depth) < 0) {
+
+    if (keyCompare(k, l.key, depth) <= 0) {
       maxKey = l.key;
       left = new Leaf<>(k, v);
       right = new Leaf<>(l.key, l.value);
@@ -189,11 +189,11 @@ public class CKDTreeMap<V> {
 
   private void helpInsert(Update update) {
     InsertInfo<V> info = (InsertInfo<V>) update.info;
-    if (keyCompare(info.l.key, info.newInternal.key, update.depth) < 0) {
-      // at left
-      //      info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT);
+    Node<V> parent = (Node<V>) info.p;
+    if (keyCompare(info.l.key, info.newInternal.key, update.depth) <= 0) {
+      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
     } else {
-      // at right
+      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
     }
   }
 

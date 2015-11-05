@@ -3,7 +3,7 @@ package chaomai.ckdtree;
 /**
  * Created by chaomai on 11/1/15.
  */
-class Leaf<V> extends Node {
+class Leaf<V> extends Node<V> {
   V value;
 
   Leaf(double[] key) {
@@ -19,10 +19,11 @@ class Leaf<V> extends Node {
   public String toString() {
     String res = "leaf: ";
 
-    for (int i = 0; i < key.length; ++i) {
-      res += key[i] + " ";
+    for (double d : key) {
+      res += d + " ";
     }
-    res += key;
+
+    res += "," + value;
     return res;
   }
 }
