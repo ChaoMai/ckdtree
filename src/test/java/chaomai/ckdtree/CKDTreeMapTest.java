@@ -33,7 +33,7 @@ public class CKDTreeMapTest {
     search1();
   }
 
-  private void add1() {
+  private void addOneKey() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double k1[] = {1};
     ckd.add(k1, 1);
@@ -44,8 +44,13 @@ public class CKDTreeMapTest {
     Assert.assertEquals(k1, r.l.key);
   }
 
+  private void addMultipleKey() {
+
+  }
+
   @Test
   public void testAdd() throws Exception {
-    add1();
+    addOneKey();
+    addMultipleKey();
   }
 }
