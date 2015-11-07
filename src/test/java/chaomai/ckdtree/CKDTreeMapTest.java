@@ -6,6 +6,7 @@ import org.junit.Test;
 /**
  * Created by chaomai on 11/3/15.
  */
+
 public class CKDTreeMapTest {
   double delta = 0.001;
 
@@ -21,7 +22,7 @@ public class CKDTreeMapTest {
 
   private void searchDummy() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[] k = {Double.POSITIVE_INFINITY};
+    double[] k = {Double.NEGATIVE_INFINITY};
 
     Object res1 = ckd.search(k);
 
@@ -30,7 +31,7 @@ public class CKDTreeMapTest {
 
   @Test
   public void testSearch() throws Exception {
-    //searchDummy();
+    searchDummy();
   }
 
   private void addOneKey() {
@@ -49,7 +50,9 @@ public class CKDTreeMapTest {
 
   private void addSomeKeys() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = {{2}, {1}, {3}, {5}, {4}};
+    double[][] k = Utilties.generateRandomArrays(5000, 1);
+
+    k[100][0] = k[101][0];
 
     for (int i = 0; i < k.length; ++i) {
       ckd.add(k[i], i);
@@ -74,16 +77,19 @@ public class CKDTreeMapTest {
     for (int i = 0; i < k.length; ++i) {
       ckd.add(k[i], i);
     }
+    // todo: lost key.
+    Assert.assertTrue(ckd.contains(k[0]));
+    Assert.assertTrue(ckd.contains(k[1]));
+    Assert.assertTrue(ckd.contains(k[2]));
 
-    //    for (int i = 0; i < samples; ++i) {
-    //      double[] k = k[i];
-    //      Assert.assertTrue(ckd.contains(k));
+    //    for (double[] key : k) {
+    //      Assert.assertTrue(ckd.contains(key));
     //
-    //      Object res = ckd.search(k);
+    //      Object res = ckd.search(key);
     //      Assert.assertNotEquals(null, res);
     //
     //      SearchRes<Integer> r = (SearchRes<Integer>) res;
-    //      Assert.assertArrayEquals(k, r.l.key, delta);
+    //      Assert.assertArrayEquals(key, r.l.key, delta);
     //    }
   }
 
@@ -91,6 +97,6 @@ public class CKDTreeMapTest {
   public void testAdd() throws Exception {
     addOneKey();
     addSomeKeys();
-    //addMultipleDimensionKeys();
+    addMultipleDimensionKeys();
   }
 }

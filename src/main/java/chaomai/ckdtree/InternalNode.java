@@ -12,8 +12,8 @@ class InternalNode<V> extends Node<V> {
   private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater = AtomicReferenceFieldUpdater
       .newUpdater(InternalNode.class, Update.class, "update");
 
-  InternalNode(double[] key, Node<V> left, Node<V> right, Gen gen) {
-    this(key, left, right, new Update(), 0, gen);
+  InternalNode(double[] key, Node<V> left, Node<V> right,int skippedDepth, Gen gen) {
+    this(key, left, right, new Update(), skippedDepth, gen);
   }
 
   InternalNode(double[] key, Node<V> left, Node<V> right, Update update, int skippedDepth,

@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @SuppressWarnings({"unused"})
 //public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
-  private InternalNode<V> root;
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
+  private InternalNode<V> root;
 
   CKDTreeMap(final boolean readOnly, final int dimension) {
     this.readOnly = readOnly;
@@ -25,7 +25,7 @@ public class CKDTreeMap<V> {
       key[i] = Double.NEGATIVE_INFINITY;
     }
 
-    root = new InternalNode<>(key, null, new Leaf<>(key), new Gen());
+    root = new InternalNode<>(key, null, new Leaf<>(key), 0, new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -120,9 +120,7 @@ public class CKDTreeMap<V> {
       }
     }
 
-    // todo: check type?
     l = (Leaf<V>) cur;
-
     return new SearchRes<>(gp, gpupdate, p, pupdate, l, depth);
   }
 
@@ -140,18 +138,17 @@ public class CKDTreeMap<V> {
   }
 
   private InternalNode<V> createSubTree(double[] k, V v, Leaf<V> l, int depth) {
-    //    int skip = 0;
-    //    don't find much help of this.
-    //    int compareResult;
-    //    while ((compareResult = keyCompare(k, l.key, depth++)) == 0) {
-    //      ++skip;
-    //    }
+    int skip = 0;
+    int compareResult;
+    while ((compareResult = keyCompare(k, l.key, depth++)) == 0) {
+      ++skip;
+    }
 
     Leaf<V> left;
     Leaf<V> right;
     double[] maxKey;
 
-    if (keyCompare(k, l.key, depth) < 0) {
+    if (compareResult < 0) {
       maxKey = l.key;
       left = new Leaf<>(k, v);
       right = new Leaf<>(l.key, l.value);
@@ -161,7 +158,7 @@ public class CKDTreeMap<V> {
       right = new Leaf<>(k, v);
     }
 
-    return new InternalNode<>(maxKey, left, right, root.gen);
+    return new InternalNode<>(maxKey, left, right, skip, root.gen);
   }
 
   private void help(Update update) {
@@ -227,13 +224,7 @@ public class CKDTreeMap<V> {
   }
 
   public boolean add(double[] key, V value) {
-    while (true) {
-      if (!insert(key, value)) {
-        continue;
-      } else {
-        return true;
-      }
-    }
+    return insert(key, value);
   }
 
   public void clear() {
