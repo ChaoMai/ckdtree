@@ -22,10 +22,10 @@ public class CKDTreeMap<V> {
 
     double[] key = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
-      key[i] = Double.NEGATIVE_INFINITY;
+      key[i] = Double.POSITIVE_INFINITY;
     }
 
-    root = new InternalNode<>(key, null, new Leaf<>(key), 0, new Gen());
+    root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
@@ -72,7 +72,7 @@ public class CKDTreeMap<V> {
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = root.right;
+    Node<V> cur = root.left;
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -121,6 +121,7 @@ public class CKDTreeMap<V> {
     }
 
     l = (Leaf<V>) cur;
+
     return new SearchRes<>(gp, gpupdate, p, pupdate, l, depth);
   }
 
@@ -181,16 +182,22 @@ public class CKDTreeMap<V> {
 
   private void helpInsert(Update update) {
     InsertInfo<V> info = (InsertInfo<V>) update.info;
-    InternalNode<V> parent = info.p;
-    if (keyCompare(parent.key, info.newInternal.key, update.depth) < 0) {
-      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
+    //    if (keyCompare(info.p.key, info.newInternal.key, update.depth) < 0) {
+    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
+    //    } else {
+    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
+    //    }
+
+    // todo: temp solution, need to be confirmed
+    if (info.l == info.p.left) {
+      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
     } else {
-      parent.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
+      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
     }
 
     size.getAndAdd(1);
 
-    parent.CAS_UPDATE(update, new Update());
+    info.p.CAS_UPDATE(update, new Update());
   }
 
   boolean insert(double[] key, V value) {
@@ -210,7 +217,7 @@ public class CKDTreeMap<V> {
 
       // IFlag
       InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
-      Update nu = new Update(State.IFLAG, op, r.leafDepth);
+      Update nu = new Update(State.IFLAG, op, --r.leafDepth);
 
       if (r.p.CAS_UPDATE(r.pupdate, nu)) {
         helpInsert(nu);
