@@ -49,6 +49,10 @@ public class CKDTreeMap<V> {
   }
 
   int keyCompare(double[] k1, double[] k2, int depth) {
+    if (k1[0] == Double.POSITIVE_INFINITY && k2[0] == Double.POSITIVE_INFINITY) {
+      return -1;
+    }
+
     if (Arrays.equals(k1, k2)) {
       return 0;
     }
@@ -182,18 +186,18 @@ public class CKDTreeMap<V> {
 
   private void helpInsert(Update update) {
     InsertInfo<V> info = (InsertInfo<V>) update.info;
-    //    if (keyCompare(info.p.key, info.newInternal.key, update.depth) < 0) {
-    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
-    //    } else {
-    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
-    //    }
-
-    // todo: temp solution, need to be confirmed
-    if (info.l == info.p.left) {
+    if (keyCompare(info.newInternal.key, info.p.key, update.depth) < 0) {
       info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
     } else {
       info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
     }
+
+    //    // todo: temp solution, need to be confirmed
+    //    if (info.l == info.p.left) {
+    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
+    //    } else {
+    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
+    //    }
 
     size.getAndAdd(1);
 

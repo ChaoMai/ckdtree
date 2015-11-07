@@ -48,11 +48,11 @@ public class CKDTreeMapTest {
     Assert.assertArrayEquals(k1, r.l.key, delta);
   }
 
-  private void addSomeKeys() {
+  private void addOneDimensionKeys(int samples) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double[][] k = Utilties.generateRandomArrays(5000, 1);
 
-    k[100][0] = k[101][0];
+    k[1][0] = k[2][0];
 
     for (int i = 0; i < k.length; ++i) {
       ckd.add(k[i], i);
@@ -93,7 +93,12 @@ public class CKDTreeMapTest {
 
   private void addMultipleDimensionKeys1() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(3);
-    double[][] k = Utilties.generateRandomArrays(50, 3);
+    // at some point, the key of newInternal would equal to its parent's key.
+    double[][] k = {{5.305068244152987, 5.084449022627336, 4.155634301794545},
+                    {4.658607614580709, 1.112285238547236, 7.6704533893483875},
+                    {3.135000004662376, 4.737773994443383, 3.8336349759006993},
+                    {1.0351259060545581, 4.21039722994082, 2.4693577126537414},
+                    {5.877263378165557, 2.2656014079486053, 0.358466039752825}};
 
     for (int i = 0; i < k.length; ++i) {
       ckd.add(k[i], i);
@@ -110,11 +115,45 @@ public class CKDTreeMapTest {
     }
   }
 
-  @Test
-  public void testAdd() throws Exception {
+  private void addMultipleDimensionKeys2(int samples, int dimension) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+
+    for (int i = 0; i < k.length; ++i) {
+      ckd.add(k[i], i);
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+  }
+
+  private void testSingleThreadAdd() {
+    System.out.println("basic:");
+    System.out.println("add One Key");
     addOneKey();
-    addSomeKeys();
+
+    for (int i = 1; i < 10; ++i) {
+      System.out.println("round" + i);
+      System.out.println("add One Dimension Keys");
+      addOneDimensionKeys(i * 1000);
+      addMultipleDimensionKeys2(i * 1000, i);
+      System.out.println(String.format("add Multiple (%d) Dimension (%d) Keys", i * 1000, i));
+    }
+
+    System.out.println("add Special Key Sequences");
     addMultipleDimensionKeys();
     addMultipleDimensionKeys1();
+  }
+
+  @Test
+  public void testAdd() throws Exception {
+    testSingleThreadAdd();
   }
 }

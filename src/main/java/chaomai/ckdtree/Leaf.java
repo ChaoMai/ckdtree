@@ -20,7 +20,7 @@ class Leaf<V> extends Node<V> {
     String res = "leaf: <[";
 
     for (double d : this.key) {
-      res += d + " ";
+      res += d + ", ";
     }
 
     res += "]," + this.value + ">";

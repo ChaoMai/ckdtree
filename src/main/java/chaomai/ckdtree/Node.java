@@ -6,11 +6,20 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by chaomai on 11/1/15.
  */
 abstract class Node<V> {
+  private static final AtomicReferenceFieldUpdater<Node, Node> leftUpdater =
+      AtomicReferenceFieldUpdater
+          .newUpdater(Node.class, Node.class, "left");
+  private static final AtomicReferenceFieldUpdater<Node, Node> rightUpdater =
+      AtomicReferenceFieldUpdater
+          .newUpdater(Node.class, Node.class, "right");
+  private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater =
+      AtomicReferenceFieldUpdater
+          .newUpdater(Node.class, Node.class, "prev");
   final double[] key;
+  final Gen gen;
   volatile Node<V> left;
   volatile Node<V> right;
   volatile Node<V> prev;
-  final Gen gen;
 
   Node() {
     this(null);
@@ -27,15 +36,6 @@ abstract class Node<V> {
     this.prev = null;
     this.gen = gen;
   }
-
-  private static final AtomicReferenceFieldUpdater<Node, Node> leftUpdater = AtomicReferenceFieldUpdater
-      .newUpdater(Node.class, Node.class, "left");
-
-  private static final AtomicReferenceFieldUpdater<Node, Node> rightUpdater = AtomicReferenceFieldUpdater
-      .newUpdater(Node.class, Node.class, "right");
-
-  private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater = AtomicReferenceFieldUpdater
-      .newUpdater(Node.class, Node.class, "prev");
 
   private boolean CAS_LEFT(Node<V> old, Node<V> n) {
     return leftUpdater.compareAndSet(this, old, n);
@@ -127,7 +127,7 @@ abstract class Node<V> {
     String res = "key: [";
 
     for (double d : this.key) {
-      res += d + " ";
+      res += d + ", ";
     }
 
     res += "]\n";
