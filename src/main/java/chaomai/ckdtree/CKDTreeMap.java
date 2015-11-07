@@ -192,13 +192,6 @@ public class CKDTreeMap<V> {
       info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
     }
 
-    //    // todo: temp solution, need to be confirmed
-    //    if (info.l == info.p.left) {
-    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
-    //    } else {
-    //      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
-    //    }
-
     size.getAndAdd(1);
 
     info.p.CAS_UPDATE(update, new Update());
