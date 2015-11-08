@@ -6,12 +6,12 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by chaomai on 11/1/15.
  */
 class InternalNode<V> extends Node<V> {
-  private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater = AtomicReferenceFieldUpdater
-      .newUpdater(InternalNode.class, Update.class, "update");
+  private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Update.class, "update");
   final int skippedDepth;
   private volatile Update update;
 
-  InternalNode(double[] key, Node<V> left, Node<V> right,int skippedDepth, Gen gen) {
+  InternalNode(double[] key, Node<V> left, Node<V> right, int skippedDepth, Gen gen) {
     this(key, left, right, new Update(), skippedDepth, gen);
   }
 

@@ -56,7 +56,28 @@ public class CKDTreeMapTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double[][] k = Utilties.generateRandomArrays(samples, 1);
 
-    k[1][0] = k[2][0];
+    for (int i = 0; i < k.length; ++i) {
+      ckd.add(k[i], i);
+    }
+
+    for (int i = 0; i < k.length; ++i) {
+      double[] key = k[i];
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+
+    Assert.assertEquals(samples, ckd.size());
+  }
+
+  private void addOneDimensionDuplicateKeys(int samples) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    int duplicateCount = Utilties.makeDuplicateKeys(k);
 
     for (int i = 0; i < k.length; ++i) {
       ckd.add(k[i], i);
@@ -72,6 +93,8 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
   private void addMultipleDimensionKeys() {
@@ -93,6 +116,8 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(k.length, ckd.size());
   }
 
   private void addMultipleDimensionKeys1() {
@@ -117,6 +142,8 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(k.length, ckd.size());
   }
 
   private void addMultipleDimensionKeys2(int samples, int dimension) {
@@ -136,12 +163,34 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(samples, ckd.size());
+  }
+
+  private void addMultipleDimensionDuplicateKeys(int samples, int dimension) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    int duplicateCount = Utilties.makeDuplicateKeys(k);
+
+    for (int i = 0; i < k.length; ++i) {
+      ckd.add(k[i], i);
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+
+    Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
   @Test
   public void testSingleThreadAdd() throws Exception {
-    System.out.println("test Single Thread Add");
-
     if (isVerbose) {
       System.out.println("add One Key");
     }
@@ -155,20 +204,33 @@ public class CKDTreeMapTest {
 
       int samples = i * sampleSteps;
       int dimension = i * dimensionSteps;
+
       if (isVerbose) {
         System.out.println(String.format("add One Dimension (%d) Keys", samples));
       }
-
       addOneDimensionKeys(samples);
-      if (isVerbose) {
-        System.out
-            .println(String.format("add Multiple (%d) Dimension (%d) Keys", dimension, samples));
-      }
 
+      if (isVerbose) {
+        System.out.println(String.format("add One Dimension Duplicate (%d) Keys", samples));
+      }
+      addOneDimensionDuplicateKeys(samples);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("add Multiple (%d) Dimension (%d) Keys", dimension, samples));
+      }
       addMultipleDimensionKeys2(samples, dimension);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("add Multiple (%d) Dimension Duplicate (%d) Keys", dimension, samples));
+      }
+      addMultipleDimensionDuplicateKeys(samples, dimension);
     }
 
-    System.out.println("add Special Key Sequences");
+    if (isVerbose) {
+      System.out.println("add Special Key Sequences");
+    }
 
     addMultipleDimensionKeys();
     addMultipleDimensionKeys1();
@@ -207,6 +269,46 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(samples, ckd.size());
+  }
+
+  private void multithreadAddOneDimensionDuplicateKeys(int samples, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    int duplicateCount = Utilties.makeDuplicateKeys(k);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+    for (int i = 0; i < threads; ++i) {
+      final int workIndex = i * workPerThread;
+      ts[i] = new Thread(() -> {
+        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
+          ckd.add(k[j], j);
+        }
+      });
+    }
+
+    for (Thread t : ts) {
+      t.start();
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+
+    Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
   private void multithreadAddMultipleDimensionKeys(int samples, int dimension, int threads) {
@@ -242,12 +344,51 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+
+    Assert.assertEquals(samples, ckd.size());
+  }
+
+  private void multithreadAddMultipleDimensionDuplicateKeys(int samples, int dimension,
+                                                            int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    int duplicateCount = Utilties.makeDuplicateKeys(k);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+    for (int i = 0; i < threads; ++i) {
+      final int workIndex = i * workPerThread;
+      ts[i] = new Thread(() -> {
+        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
+          ckd.add(k[j], j);
+        }
+      });
+    }
+
+    for (Thread t : ts) {
+      t.start();
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+
+    Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
   @Test
   public void testMultithreadAdd() throws Exception {
-    System.out.println("test Multithreading Add");
-
     for (int i = 1; i < rounds; ++i) {
       if (isVerbose) {
         System.out.println("add Multiple Keys, round" + i);
@@ -257,20 +398,34 @@ public class CKDTreeMapTest {
       int threads = i;
 
       if (isVerbose) {
-        System.out
-            .println(String.format("add Multiple threads add One Dimension (%d) Keys", samples));
+        System.out.println(
+            String.format("add Multiple threads add One Dimension (%d) Keys", samples));
       }
-
       multithreadAddOneDimensionKeys(samples, threads);
 
       if (isVerbose) {
-        System.out
-            .println(String
-                         .format("Multiple (%d) threads add Multiple (%d) Dimension (%d) Keys",
-                                 threads, dimension,
-                                 samples));
+        System.out.println(
+            String.format("add Multiple threads add One Dimension Duplicate (%d) Keys", samples));
+      }
+      multithreadAddOneDimensionDuplicateKeys(samples, threads);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("add Multiple (%d) threads add Multiple (%d) Dimension (%d) Keys",
+                          threads, dimension, samples));
       }
       multithreadAddMultipleDimensionKeys(samples, dimension, threads);
+      if (isVerbose) {
+        System.out.println(String.format(
+            "add Multiple (%d) threads add Multiple (%d) Dimension Duplicate (%d) Keys", threads,
+            dimension, samples));
+      }
+      multithreadAddMultipleDimensionDuplicateKeys(samples, dimension, threads);
     }
+  }
+
+  @Test
+  public void testSnapshot() throws Exception {
+
   }
 }

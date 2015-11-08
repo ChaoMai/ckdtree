@@ -3,6 +3,7 @@ package chaomai.ckdtree;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Created by chaomai on 11/1/15.
@@ -14,9 +15,17 @@ public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
+  private final AtomicReferenceFieldUpdater<CKDTreeMap, InternalNode> rootUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, InternalNode.class, "root");
   private InternalNode<V> root;
 
-  CKDTreeMap(final boolean readOnly, final int dimension) {
+  private CKDTreeMap(final InternalNode<V> root, final boolean readOnly, final int dimension) {
+    this.root = root;
+    this.readOnly = readOnly;
+    this.dimension = dimension;
+  }
+
+  private CKDTreeMap(final boolean readOnly, final int dimension) {
     this.readOnly = readOnly;
     this.dimension = dimension;
 
@@ -25,30 +34,38 @@ public class CKDTreeMap<V> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
+    this.root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
   }
 
   public CKDTreeMap(final int dimension) {
     this(false, dimension);
   }
 
-  boolean isReadOnly() {
+  private boolean isReadOnly() {
     return readOnly;
   }
 
-  boolean nonReadOnly() {
+  private boolean nonReadOnly() {
     return !readOnly;
+  }
+
+  private boolean CAS_ROOT(InternalNode<V> old, InternalNode<V> n) {
+    if (isReadOnly()) {
+      throw new IllegalStateException("Attempted to modify a read-only snapshot");
+    }
+
+    return rootUpdater.compareAndSet(this, old, n);
   }
 
   InternalNode<V> readRoot() {
     return root;
   }
 
-  boolean keyEqual(double[] k1, double[] k2) {
+  private boolean keyEqual(double[] k1, double[] k2) {
     return Arrays.equals(k1, k2);
   }
 
-  int keyCompare(double[] k1, double[] k2, int depth) {
+  private int keyCompare(double[] k1, double[] k2, int depth) {
     if (k1[0] == Double.POSITIVE_INFINITY && k2[0] == Double.POSITIVE_INFINITY) {
       return -1;
     }
@@ -111,8 +128,8 @@ public class CKDTreeMap<V> {
 
         if (right instanceof InternalNode) {
           if (((InternalNode) right).gen != startGen) {
-            if (cur
-                .GCAS(right, ((InternalNode<V>) right).renewed(startGen), this, Direction.RIGHT)) {
+            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen), this,
+                         Direction.RIGHT)) {
               continue;
             } else {
               return SearchRes.RESTART;
@@ -197,7 +214,7 @@ public class CKDTreeMap<V> {
     info.p.CAS_UPDATE(update, new Update());
   }
 
-  boolean insert(double[] key, V value) {
+  private boolean insert(double[] key, V value) {
     while (true) {
       SearchRes<V> r = search(key);
 
@@ -260,8 +277,14 @@ public class CKDTreeMap<V> {
     return this.size.get();
   }
 
+  // todo: should be necessary to use RDCSS, since a single CAS_ROOT can't prevent losing modification.
+  // todo: need to be confirmed.
   public CKDTreeMap<V> snapshot() {
-    return null;
+    InternalNode<V> or = readRoot();
+    InternalNode<V> nr = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
+    CAS_ROOT(or, nr);
+    InternalNode<V> snap = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
+    return new CKDTreeMap<>(snap, this.readOnly, this.dimension);
   }
 
   @Override
