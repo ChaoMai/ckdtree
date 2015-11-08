@@ -8,7 +8,11 @@ import org.junit.Test;
  */
 
 public class CKDTreeMapTest {
+  int dimensionSteps = 100;
+  int sampleSteps = 5000;
+  int rounds = 10;
   double delta = 0.001;
+  boolean isVerbose = true;
 
   @Test
   public void testConstructor() throws Exception {
@@ -50,7 +54,7 @@ public class CKDTreeMapTest {
 
   private void addOneDimensionKeys(int samples) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(5000, 1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
 
     k[1][0] = k[2][0];
 
@@ -134,26 +138,139 @@ public class CKDTreeMapTest {
     }
   }
 
-  private void testSingleThreadAdd() {
-    System.out.println("basic:");
-    System.out.println("add One Key");
+  @Test
+  public void testSingleThreadAdd() throws Exception {
+    System.out.println("test Single Thread Add");
+
+    if (isVerbose) {
+      System.out.println("add One Key");
+    }
+
     addOneKey();
 
-    for (int i = 1; i < 10; ++i) {
-      System.out.println("round" + i);
-      System.out.println("add One Dimension Keys");
-      addOneDimensionKeys(i * 1000);
-      addMultipleDimensionKeys2(i * 1000, i);
-      System.out.println(String.format("add Multiple (%d) Dimension (%d) Keys", i * 1000, i));
+    for (int i = 1; i < rounds; ++i) {
+      if (isVerbose) {
+        System.out.println("add Multiple Keys, round" + i);
+      }
+
+      int samples = i * sampleSteps;
+      int dimension = i * dimensionSteps;
+      if (isVerbose) {
+        System.out.println(String.format("add One Dimension (%d) Keys", samples));
+      }
+
+      addOneDimensionKeys(samples);
+      if (isVerbose) {
+        System.out
+            .println(String.format("add Multiple (%d) Dimension (%d) Keys", dimension, samples));
+      }
+
+      addMultipleDimensionKeys2(samples, dimension);
     }
 
     System.out.println("add Special Key Sequences");
+
     addMultipleDimensionKeys();
     addMultipleDimensionKeys1();
   }
 
+  private void multithreadAddOneDimensionKeys(int samples, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+    for (int i = 0; i < threads; ++i) {
+      final int workIndex = i * workPerThread;
+      ts[i] = new Thread(() -> {
+        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
+          ckd.add(k[j], j);
+        }
+      });
+    }
+
+    for (Thread t : ts) {
+      t.start();
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+  }
+
+  private void multithreadAddMultipleDimensionKeys(int samples, int dimension, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+    for (int i = 0; i < threads; ++i) {
+      final int workIndex = i * workPerThread;
+      ts[i] = new Thread(() -> {
+        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
+          ckd.add(k[j], j);
+        }
+      });
+    }
+
+    for (Thread t : ts) {
+      t.start();
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (double[] key : k) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
+  }
+
   @Test
-  public void testAdd() throws Exception {
-    testSingleThreadAdd();
+  public void testMultithreadAdd() throws Exception {
+    System.out.println("test Multithreading Add");
+
+    for (int i = 1; i < rounds; ++i) {
+      if (isVerbose) {
+        System.out.println("add Multiple Keys, round" + i);
+      }
+      int samples = i * sampleSteps;
+      int dimension = i * dimensionSteps;
+      int threads = i;
+
+      if (isVerbose) {
+        System.out
+            .println(String.format("add Multiple threads add One Dimension (%d) Keys", samples));
+      }
+
+      multithreadAddOneDimensionKeys(samples, threads);
+
+      if (isVerbose) {
+        System.out
+            .println(String
+                         .format("Multiple (%d) threads add Multiple (%d) Dimension (%d) Keys",
+                                 threads, dimension,
+                                 samples));
+      }
+      multithreadAddMultipleDimensionKeys(samples, dimension, threads);
+    }
   }
 }
