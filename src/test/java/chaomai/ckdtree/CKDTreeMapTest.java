@@ -10,6 +10,7 @@ import org.junit.Test;
 public class CKDTreeMapTest {
   int dimensionSteps = 100;
   int sampleSteps = 5000;
+  int threadsSteps = 2;
   int rounds = 10;
   double delta = 0.001;
   boolean isVerbose = true;
@@ -395,7 +396,7 @@ public class CKDTreeMapTest {
       }
       int samples = i * sampleSteps;
       int dimension = i * dimensionSteps;
-      int threads = i;
+      int threads = i * threadsSteps;
 
       if (isVerbose) {
         System.out.println(
@@ -426,6 +427,30 @@ public class CKDTreeMapTest {
 
   @Test
   public void testSnapshot() throws Exception {
+    int samples = 10;
+    int dimension = 1;
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k1 = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k2 = Utilties.generateRandomArrays(samples, dimension);
 
+    for (int i = 0; i < k1.length; ++i) {
+      ckd.add(k1[i], i);
+    }
+
+    CKDTreeMap<Integer> snapshot = ckd.snapshot();
+
+    for (int i = 0; i < k2.length; ++i) {
+      ckd.add(k2[i], i);
+    }
+
+    for (double[] key : k1) {
+      Assert.assertTrue(ckd.contains(key));
+
+      Object res = ckd.search(key);
+      Assert.assertNotEquals(null, res);
+
+      SearchRes<Integer> r = (SearchRes<Integer>) res;
+      Assert.assertArrayEquals(key, r.l.key, delta);
+    }
   }
 }

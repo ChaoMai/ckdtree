@@ -3,6 +3,7 @@ package chaomai.ckdtree;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Created by chaomai on 11/1/15.
@@ -14,7 +15,10 @@ public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
-  private InternalNode<V> root;
+  private volatile InternalNode<V> root;
+
+  private AtomicReferenceFieldUpdater<CKDTreeMap, InternalNode> rootUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, InternalNode.class, "root");
 
   private CKDTreeMap(final InternalNode<V> root, final boolean readOnly, final int dimension) {
     this.root = root;
@@ -47,12 +51,11 @@ public class CKDTreeMap<V> {
   }
 
   private boolean CAS_ROOT(InternalNode<V> old, InternalNode<V> n) {
-    //    if (isReadOnly()) {
-    //      throw new IllegalStateException("Attempted to modify a read-only snapshot");
-    //    }
-    //
-    //    return rootUpdater.compareAndSet(this, old, n);
-    return false;
+    if (isReadOnly()) {
+      throw new IllegalStateException("Attempted to modify a read-only snapshot");
+    }
+
+    return rootUpdater.compareAndSet(this, old, n);
   }
 
   InternalNode<V> readRoot() {
@@ -277,6 +280,11 @@ public class CKDTreeMap<V> {
 
   // todo: should be necessary to use RDCSS, since a single CAS_ROOT can't prevent losing modification.
   // todo: need to be confirmed.
+  // todo: confirmed, RDCSS is necessary.
+  // to keep invariant from root, root and its left child must be updated. otherwise, when iteration
+  // reaches the left child of root and decide to change its left child to new, the gcas operation
+  // will be bound to fail. because the gen of the left child of root is old.
+  // todo: left child of root should be renewed too.
   public CKDTreeMap<V> snapshot() {
     InternalNode<V> or = readRoot();
     InternalNode<V> nr = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());

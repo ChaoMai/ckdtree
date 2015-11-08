@@ -26,7 +26,8 @@ class InternalNode<V> extends Node<V> {
     // todo: should perform a deep copy here(everything here and things in `update`)
     // todo: or just create new `update`
     // todo: any optimization?
-    return new InternalNode<>(key, left, right, new Update(), skippedDepth, newGen);
+    return new InternalNode<>(this.key, this.left, this.right, new Update(), this.skippedDepth,
+                              newGen);
   }
 
   boolean CAS_UPDATE(Update old, Update n) {
