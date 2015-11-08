@@ -3,7 +3,6 @@ package chaomai.ckdtree;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Created by chaomai on 11/1/15.
@@ -15,8 +14,6 @@ public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
-  private final AtomicReferenceFieldUpdater<CKDTreeMap, InternalNode> rootUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, InternalNode.class, "root");
   private InternalNode<V> root;
 
   private CKDTreeMap(final InternalNode<V> root, final boolean readOnly, final int dimension) {
@@ -41,20 +38,21 @@ public class CKDTreeMap<V> {
     this(false, dimension);
   }
 
-  private boolean isReadOnly() {
+  boolean isReadOnly() {
     return readOnly;
   }
 
-  private boolean nonReadOnly() {
+  boolean nonReadOnly() {
     return !readOnly;
   }
 
   private boolean CAS_ROOT(InternalNode<V> old, InternalNode<V> n) {
-    if (isReadOnly()) {
-      throw new IllegalStateException("Attempted to modify a read-only snapshot");
-    }
-
-    return rootUpdater.compareAndSet(this, old, n);
+    //    if (isReadOnly()) {
+    //      throw new IllegalStateException("Attempted to modify a read-only snapshot");
+    //    }
+    //
+    //    return rootUpdater.compareAndSet(this, old, n);
+    return false;
   }
 
   InternalNode<V> readRoot() {
