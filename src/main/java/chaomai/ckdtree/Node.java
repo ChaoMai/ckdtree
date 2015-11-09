@@ -63,7 +63,7 @@ abstract class Node<V> {
       return null;
     } else {
       Node prev = n.prev;
-      InternalNode<V> root = ckd.readRoot();
+      InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
 
       if (prev == null) {
         return n;

@@ -8,17 +8,17 @@ import org.junit.Test;
  */
 
 public class CKDTreeMapTest {
-  int dimensionSteps = 100;
-  int sampleSteps = 5000;
-  int threadsSteps = 2;
-  int rounds = 10;
+  int dimensionSteps = 500;
+  int sampleSteps = 20000;
+  int threadsSteps = 1;
+  int rounds = 4;
   double delta = 0.001;
   boolean isVerbose = true;
 
   @Test
   public void testConstructor() throws Exception {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    InternalNode<Integer> root = ckd.readRoot();
+    InternalNode<Integer> root = ckd.RDCSS_READ_ROOT();
 
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.key[0], delta);
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.left.key[0], delta);
@@ -61,8 +61,7 @@ public class CKDTreeMapTest {
 
   // todo: add true or false
   private void checkKeysInCKD(double[][] k, CKDTreeMap ckd) {
-    for (int i = 0; i < k.length; ++i) {
-      double[] key = k[i];
+    for (double[] key : k) {
       Assert.assertTrue(ckd.contains(key));
 
       Object res = ckd.search(key);
@@ -148,6 +147,28 @@ public class CKDTreeMapTest {
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
+  private void addMultipleDimensionDimensionDuplicateKeys() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(3);
+    // at some point, the key of newInternal would equal to its parent's key.
+    double[][] k = {{5.305068244152987, 5.084449022627336, 4.155634301794545},
+                    {4.658607614580709, 1.112285238547236, 7.6704533893483875},
+                    {3.135000004662376, 4.737773994443383, 3.8336349759006993},
+                    {1.0351259060545581, 4.21039722994082, 2.4693577126537414},
+                    {5.877263378165557, 2.2656014079486053, 0.358466039752825}};
+
+    k[0][0] = k[1][0];
+    k[0][1] = k[1][1];
+
+    k[3][1] = k[4][1];
+    k[3][2] = k[4][2];
+
+    addKeysToCKD(k, ckd);
+
+    checkKeysInCKD(k, ckd);
+
+    Assert.assertEquals(k.length, ckd.size());
+  }
+
   @Test
   public void testSingleThreadAdd() throws Exception {
     if (isVerbose) {
@@ -158,7 +179,7 @@ public class CKDTreeMapTest {
 
     for (int i = 1; i < rounds; ++i) {
       if (isVerbose) {
-        System.out.println("add Multiple Keys, round" + i);
+        System.out.println("add Multiple Keys, round " + i);
       }
 
       int samples = i * sampleSteps;
@@ -191,8 +212,20 @@ public class CKDTreeMapTest {
       System.out.println("add Special Key Sequences");
     }
 
+    if (isVerbose) {
+      System.out.println("add Multiple Dimension Keys");
+    }
     addMultipleDimensionKeys();
+
+    if (isVerbose) {
+      System.out.println("add Multiple Dimension Keys1");
+    }
     addMultipleDimensionKeys1();
+
+    if (isVerbose) {
+      System.out.println("add Multiple Dimension, Dimension Duplicate Keys");
+    }
+    addMultipleDimensionDimensionDuplicateKeys();
   }
 
   private void multithreadAddOneDimensionKeys(int samples, int threads) {
@@ -219,15 +252,7 @@ public class CKDTreeMapTest {
       }
     }
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples, ckd.size());
   }
@@ -257,15 +282,7 @@ public class CKDTreeMapTest {
       }
     }
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
@@ -294,15 +311,7 @@ public class CKDTreeMapTest {
       }
     }
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples, ckd.size());
   }
@@ -333,15 +342,7 @@ public class CKDTreeMapTest {
       }
     }
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
@@ -350,7 +351,7 @@ public class CKDTreeMapTest {
   public void testMultithreadAdd() throws Exception {
     for (int i = 1; i < rounds; ++i) {
       if (isVerbose) {
-        System.out.println("add Multiple Keys, round" + i);
+        System.out.println("add Multiple Keys, round " + i);
       }
       int samples = i * sampleSteps;
       int dimension = i * dimensionSteps;
@@ -398,7 +399,7 @@ public class CKDTreeMapTest {
     // check snapshot
     Assert.assertEquals(0, snapshot.size());
 
-    InternalNode<Integer> root = snapshot.readRoot();
+    InternalNode<Integer> root = snapshot.RDCSS_READ_ROOT();
 
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.key[0], delta);
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.left.key[0], delta);
