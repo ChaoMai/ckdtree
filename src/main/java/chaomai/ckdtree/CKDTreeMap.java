@@ -281,15 +281,15 @@ public class CKDTreeMap<V> {
   // todo: should be necessary to use RDCSS, since a single CAS_ROOT can't prevent losing modification.
   // todo: need to be confirmed.
   // todo: confirmed, RDCSS is necessary.
-  // to keep invariant from root, root and its left child must be updated. otherwise, when iteration
-  // reaches the left child of root and decide to change its left child to new, the gcas operation
-  // will be bound to fail. because the gen of the left child of root is old.
+  // to keep invariant from root, both root and its left child must be updated.
+  // otherwise, when iteration reaches the left child of root and decide to change its left child to new,
+  // the gcas operation will be bound to fail. because the gen of the left child of root is old.
   // todo: left child of root should be renewed too.
   public CKDTreeMap<V> snapshot() {
     InternalNode<V> or = readRoot();
-    InternalNode<V> nr = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
+    InternalNode<V> nr = or.copyRootToGen(new Gen());
     CAS_ROOT(or, nr);
-    InternalNode<V> snap = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
+    InternalNode<V> snap = or.copyRootToGen(new Gen());
     return new CKDTreeMap<>(snap, this.readOnly, this.dimension);
   }
 

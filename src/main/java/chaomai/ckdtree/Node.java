@@ -7,14 +7,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 abstract class Node<V> {
   private static final AtomicReferenceFieldUpdater<Node, Node> leftUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "left");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "left");
   private static final AtomicReferenceFieldUpdater<Node, Node> rightUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "right");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
   private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "prev");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "prev");
   final double[] key;
   final Gen gen;
   volatile Node<V> left;
@@ -80,7 +77,7 @@ abstract class Node<V> {
           }
         }
       } else if (prev instanceof InternalNode || prev instanceof Leaf) {
-        if (root.gen == gen && ckd.nonReadOnly()) {
+        if (root.gen == this.gen && ckd.nonReadOnly()) {
           if (n.CAS_PREV(prev, null)) {
             return n;
           } else {

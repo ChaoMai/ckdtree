@@ -30,6 +30,27 @@ class InternalNode<V> extends Node<V> {
                               newGen);
   }
 
+  InternalNode<V> copyRootToGen(Gen newGen) {
+    // copy root and the left child of leaf
+    InternalNode<V> nr =
+        new InternalNode<>(this.key, null, null, new Update(), this.skippedDepth, newGen);
+
+    Node<V> l = this.left;
+    Node<V> nl;
+    if (l instanceof Leaf) {
+      nl = new Leaf<>(l.key, (V) ((Leaf) l).value);
+    } else if (l instanceof InternalNode) {
+      nl = new InternalNode<>(l.key, l.left, l.right, new Update(), ((InternalNode) l).skippedDepth,
+                              newGen);
+    } else {
+      throw new IllegalStateException("Left of root is neither Leaf or InternalNode");
+    }
+
+    nr.left = nl;
+
+    return nr;
+  }
+
   boolean CAS_UPDATE(Update old, Update n) {
     return updateUpdater.compareAndSet(this, old, n);
   }

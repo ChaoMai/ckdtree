@@ -53,14 +53,14 @@ public class CKDTreeMapTest {
     Assert.assertArrayEquals(k1, r.l.key, delta);
   }
 
-  private void addOneDimensionKeys(int samples) {
-    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
-
-    for (int i = 0; i < k.length; ++i) {
+  private void addKeysToCKD(double[][] k, CKDTreeMap ckd) {
+    for (int i = 0; i < k.length; i++) {
       ckd.add(k[i], i);
     }
+  }
 
+  // todo: add true or false
+  private void checkKeysInCKD(double[][] k, CKDTreeMap ckd) {
     for (int i = 0; i < k.length; ++i) {
       double[] key = k[i];
       Assert.assertTrue(ckd.contains(key));
@@ -71,6 +71,15 @@ public class CKDTreeMapTest {
       SearchRes<Integer> r = (SearchRes<Integer>) res;
       Assert.assertArrayEquals(key, r.l.key, delta);
     }
+  }
+
+  private void addOneDimensionKeys(int samples) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
+
+    addKeysToCKD(k, ckd);
+
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples, ckd.size());
   }
@@ -80,20 +89,9 @@ public class CKDTreeMapTest {
     double[][] k = Utilties.generateRandomArrays(samples, 1);
     int duplicateCount = Utilties.makeDuplicateKeys(k);
 
-    for (int i = 0; i < k.length; ++i) {
-      ckd.add(k[i], i);
-    }
+    addKeysToCKD(k, ckd);
 
-    for (int i = 0; i < k.length; ++i) {
-      double[] key = k[i];
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
@@ -104,19 +102,9 @@ public class CKDTreeMapTest {
         {{1, 2, 3}, {2, 3, 4}, {3, 4, 5}, {4, 5, 6}, {5, 6, 7}, {6, 7, 8}, {7, 8, 9}, {9, 10, 11},
          {11, 12, 13}};
 
-    for (int i = 0; i < k.length; ++i) {
-      ckd.add(k[i], i);
-    }
+    addKeysToCKD(k, ckd);
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(k.length, ckd.size());
   }
@@ -130,19 +118,9 @@ public class CKDTreeMapTest {
                     {1.0351259060545581, 4.21039722994082, 2.4693577126537414},
                     {5.877263378165557, 2.2656014079486053, 0.358466039752825}};
 
-    for (int i = 0; i < k.length; ++i) {
-      ckd.add(k[i], i);
-    }
+    addKeysToCKD(k, ckd);
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(k.length, ckd.size());
   }
@@ -151,19 +129,9 @@ public class CKDTreeMapTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
     double[][] k = Utilties.generateRandomArrays(samples, dimension);
 
-    for (int i = 0; i < k.length; ++i) {
-      ckd.add(k[i], i);
-    }
+    addKeysToCKD(k, ckd);
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples, ckd.size());
   }
@@ -173,19 +141,9 @@ public class CKDTreeMapTest {
     double[][] k = Utilties.generateRandomArrays(samples, dimension);
     int duplicateCount = Utilties.makeDuplicateKeys(k);
 
-    for (int i = 0; i < k.length; ++i) {
-      ckd.add(k[i], i);
-    }
+    addKeysToCKD(k, ckd);
 
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
-
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+    checkKeysInCKD(k, ckd);
 
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
@@ -425,32 +383,57 @@ public class CKDTreeMapTest {
     }
   }
 
-  @Test
-  public void testSnapshot() throws Exception {
+  // todo: finish this
+  private void snapshotOnEmptyCKD() {
+    int samples = 10;
+    int dimension = 1;
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+
+    CKDTreeMap<Integer> snapshot = ckd.snapshot();
+
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+
+    addKeysToCKD(k, ckd);
+
+    // check snapshot
+    Assert.assertEquals(0, snapshot.size());
+
+    InternalNode<Integer> root = snapshot.readRoot();
+
+    Assert.assertEquals(Double.POSITIVE_INFINITY, root.key[0], delta);
+    Assert.assertEquals(Double.POSITIVE_INFINITY, root.left.key[0], delta);
+    Assert.assertEquals(null, root.right);
+    Assert.assertEquals(null, root.left.left);
+    Assert.assertEquals(null, root.left.right);
+
+    // check ckd
+    checkKeysInCKD(k, ckd);
+  }
+
+  private void snapshotOnOneDimensionCKD() {
     int samples = 10;
     int dimension = 1;
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
     double[][] k1 = Utilties.generateRandomArrays(samples, dimension);
     double[][] k2 = Utilties.generateRandomArrays(samples, dimension);
 
-    for (int i = 0; i < k1.length; ++i) {
-      ckd.add(k1[i], i);
-    }
+    addKeysToCKD(k1, ckd);
 
     CKDTreeMap<Integer> snapshot = ckd.snapshot();
 
-    for (int i = 0; i < k2.length; ++i) {
-      ckd.add(k2[i], i);
-    }
+    addKeysToCKD(k2, ckd);
 
-    for (double[] key : k1) {
-      Assert.assertTrue(ckd.contains(key));
+    // check snapshot
+    checkKeysInCKD(k1, snapshot);
 
-      Object res = ckd.search(key);
-      Assert.assertNotEquals(null, res);
+    // check ckd
+    checkKeysInCKD(k1, ckd);
+    checkKeysInCKD(k2, ckd);
+  }
 
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
-    }
+  @Test
+  public void testSnapshot() throws Exception {
+    snapshotOnEmptyCKD();
+    snapshotOnOneDimensionCKD();
   }
 }
