@@ -3,26 +3,29 @@ package chaomai.ckdtree;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Created by chaomai on 11/1/15.
  */
 
 @SuppressWarnings({"unused"})
-//public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
-  private InternalNode<V> root;
+  private volatile Object root;
 
-  private CKDTreeMap(final InternalNode<V> root, final boolean readOnly, final int dimension) {
+  private AtomicReferenceFieldUpdater<CKDTreeMap, Object> rootUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, Object.class, "root");
+
+  private CKDTreeMap(InternalNode<V> root, boolean readOnly, int dimension) {
     this.root = root;
     this.readOnly = readOnly;
     this.dimension = dimension;
   }
 
-  private CKDTreeMap(final boolean readOnly, final int dimension) {
+  private CKDTreeMap(boolean readOnly, int dimension) {
     this.readOnly = readOnly;
     this.dimension = dimension;
 
@@ -34,8 +37,74 @@ public class CKDTreeMap<V> {
     this.root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
   }
 
-  public CKDTreeMap(final int dimension) {
+  public CKDTreeMap(int dimension) {
     this(false, dimension);
+  }
+
+  private InternalNode<V> RDCSS_COMPLETE(boolean abort) {
+    while (true) {
+      Object v = root;
+
+      if (v instanceof InternalNode) {
+        return (InternalNode<V>) v;
+      } else if (v instanceof RDCSSDescriptor) {
+        RDCSSDescriptor<V> desc = (RDCSSDescriptor<V>) v;
+
+        InternalNode<V> ov = desc.ov;
+        Node<V> expl = desc.ol;
+        InternalNode<V> nv = desc.nv;
+
+        if (abort) {
+          if (CAS_ROOT(desc, ov)) {
+            return ov;
+          } else {
+            continue;
+          }
+        } else {
+          Node<V> ol = ov.GCAS_READ_LEFT_CHILD(this);
+
+          if (ol == expl) {
+            if (CAS_ROOT(desc, nv)) {
+              desc.committed = true;
+              return nv;
+            } else {
+              continue;
+            }
+          } else {
+            if (CAS_ROOT(desc, ov)) {
+              return ov;
+            } else {
+              continue;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private boolean RDCSS_ROOT(InternalNode<V> ov, Node<V> ol, InternalNode<V> nv) {
+    RDCSSDescriptor<V> desc = new RDCSSDescriptor<>(ov, ol, nv);
+
+    if (CAS_ROOT(ov, desc)) {
+      RDCSS_COMPLETE(false);
+      return desc.committed;
+    } else {
+      return false;
+    }
+  }
+
+  InternalNode<V> RDCSS_READ_ROOT() {
+    return RDCSS_READ_ROOT(false);
+  }
+
+  InternalNode<V> RDCSS_READ_ROOT(boolean abort) {
+    Object r = root;
+
+    if (r instanceof InternalNode) {
+      return (InternalNode<V>) r;
+    } else {
+      return RDCSS_COMPLETE(abort);
+    }
   }
 
   boolean isReadOnly() {
@@ -46,17 +115,12 @@ public class CKDTreeMap<V> {
     return !readOnly;
   }
 
-  private boolean CAS_ROOT(InternalNode<V> old, InternalNode<V> n) {
-    //    if (isReadOnly()) {
-    //      throw new IllegalStateException("Attempted to modify a read-only snapshot");
-    //    }
-    //
-    //    return rootUpdater.compareAndSet(this, old, n);
-    return false;
-  }
+  private boolean CAS_ROOT(Object old, Object n) {
+    if (isReadOnly()) {
+      throw new IllegalStateException("Attempted to modify a read-only snapshot");
+    }
 
-  InternalNode<V> readRoot() {
-    return root;
+    return rootUpdater.compareAndSet(this, old, n);
   }
 
   private boolean keyEqual(double[] k1, double[] k2) {
@@ -86,12 +150,12 @@ public class CKDTreeMap<V> {
   private Object searchKey(double[] key, Gen startGen) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
-    InternalNode<V> p = root;
-    Update pupdate = root.GET_UPDATE();
+    InternalNode<V> p = this.RDCSS_READ_ROOT();
+    Update pupdate = p.GET_UPDATE();
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = root.left;
+    Node<V> cur = p.GCAS_READ_LEFT_CHILD(this);
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -103,13 +167,14 @@ public class CKDTreeMap<V> {
 
       if (keyCompare(key, cur.key, depth++) < 0) {
         // if left child are InternalNode, then check their generation.
-        Node<V> left = cur.left;
+        Node<V> left = cur.GCAS_READ_LEFT_CHILD(this);
 
         // only perform GCAS on InternalNode
         if (left instanceof InternalNode) {
           if (left.gen != startGen) {
             // do GCAS, change the left into a new with new gen.
-            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen), this, Direction.LEFT)) {
+            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this,
+                         Direction.LEFT)) {
               // retry on cur
               continue;
             } else {
@@ -118,15 +183,15 @@ public class CKDTreeMap<V> {
           }
         }
 
-        cur = p.left;
+        cur = p.GCAS_READ_LEFT_CHILD(this);
 
       } else {
         // if right child are InternalNode, then check their generation.
-        Node<V> right = ((InternalNode<V>) cur).right;
+        Node<V> right = cur.GCAS_READ_RIGHT_CHILD(this);
 
         if (right instanceof InternalNode) {
           if (((InternalNode) right).gen != startGen) {
-            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen), this,
+            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
                          Direction.RIGHT)) {
               continue;
             } else {
@@ -135,7 +200,7 @@ public class CKDTreeMap<V> {
           }
         }
 
-        cur = p.right;
+        cur = p.GCAS_READ_RIGHT_CHILD(this);
       }
     }
 
@@ -146,7 +211,7 @@ public class CKDTreeMap<V> {
 
   SearchRes<V> search(double[] key) {
     while (true) {
-      Object res = searchKey(key, root.gen);
+      Object res = searchKey(key, this.RDCSS_READ_ROOT().gen);
 
       if (res == SearchRes.RESTART) {
         continue;
@@ -178,7 +243,7 @@ public class CKDTreeMap<V> {
       right = new Leaf<>(k, v);
     }
 
-    return new InternalNode<>(maxKey, left, right, skip, root.gen);
+    return new InternalNode<>(maxKey, left, right, skip, this.RDCSS_READ_ROOT().gen);
   }
 
   private void help(Update update) {
@@ -275,18 +340,27 @@ public class CKDTreeMap<V> {
     return this.size.get();
   }
 
-  // todo: should be necessary to use RDCSS, since a single CAS_ROOT can't prevent losing modification.
-  // todo: need to be confirmed.
+  // to keep invariant from root, both root and its left child must be updated.
+  // otherwise, when iteration reaches the left child of root and decide to change its left child to new,
+  // the gcas operation will be bound to fail. because the gen of the left child of root is old.
   public CKDTreeMap<V> snapshot() {
-    InternalNode<V> or = readRoot();
-    InternalNode<V> nr = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
-    CAS_ROOT(or, nr);
-    InternalNode<V> snap = new InternalNode<>(root.key, root.left, root.right, 0, new Gen());
-    return new CKDTreeMap<>(snap, this.readOnly, this.dimension);
+    while (true) {
+      InternalNode<V> r = RDCSS_READ_ROOT();
+      Node<V> ol = r.GCAS_READ_LEFT_CHILD(this);
+
+      InternalNode<V> nr = r.copyRootToGen(new Gen(), this);
+
+      if (RDCSS_ROOT(r, ol, nr)) {
+        InternalNode<V> snap = r.copyRootToGen(new Gen(), this);
+        return new CKDTreeMap<>(snap, this.readOnly, this.dimension);
+      } else {
+        continue;
+      }
+    }
   }
 
   @Override
   public String toString() {
-    return this.root.toString();
+    return this.RDCSS_READ_ROOT().toString();
   }
 }
