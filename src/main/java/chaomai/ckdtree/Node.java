@@ -46,6 +46,14 @@ abstract class Node<V> {
     return prevUpdater.compareAndSet(this, old, n);
   }
 
+  protected void WRITE_LEFT(Node<V> left) {
+    leftUpdater.set(this, left);
+  }
+
+  protected void WRITE_RIGHT(Node<V> right) {
+    rightUpdater.set(this, right);
+  }
+
   protected void WRITE_PREV(Node<V> old) {
     prevUpdater.set(this, old);
   }
@@ -116,6 +124,28 @@ abstract class Node<V> {
       default: {
         throw new RuntimeException("Should not happen");
       }
+    }
+  }
+
+  protected Node<V> GCAS_READ_LEFT_CHILD(CKDTreeMap<V> ckd) {
+    Node<V> left = this.left;
+    Node<V> prev = left.prev;
+
+    if (prev == null) {
+      return left;
+    } else {
+      return GCAS_COMPLETE(left, ckd, Direction.LEFT);
+    }
+  }
+
+  protected Node<V> GCAS_READ_RIGHT_CHILD(CKDTreeMap<V> ckd) {
+    Node<V> right = this.right;
+    Node<V> prev = right.prev;
+
+    if (prev == null) {
+      return right;
+    } else {
+      return GCAS_COMPLETE(right, ckd, Direction.RIGHT);
     }
   }
 

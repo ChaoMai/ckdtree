@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 
 @SuppressWarnings({"unused"})
-//public class CKDTreeMap<V> extends AbstractSet<V> {
 public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
@@ -20,13 +19,13 @@ public class CKDTreeMap<V> {
   private AtomicReferenceFieldUpdater<CKDTreeMap, InternalNode> rootUpdater =
       AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, InternalNode.class, "root");
 
-  private CKDTreeMap(final InternalNode<V> root, final boolean readOnly, final int dimension) {
+  private CKDTreeMap(InternalNode<V> root, boolean readOnly, int dimension) {
     this.root = root;
     this.readOnly = readOnly;
     this.dimension = dimension;
   }
 
-  private CKDTreeMap(final boolean readOnly, final int dimension) {
+  private CKDTreeMap(boolean readOnly, int dimension) {
     this.readOnly = readOnly;
     this.dimension = dimension;
 
@@ -38,8 +37,12 @@ public class CKDTreeMap<V> {
     this.root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
   }
 
-  public CKDTreeMap(final int dimension) {
+  public CKDTreeMap(int dimension) {
     this(false, dimension);
+  }
+
+  private boolean RDCSS_ROOT(InternalNode<V> ov, Node<V> ol, InternalNode<V> nv) {
+    return false;
   }
 
   boolean isReadOnly() {
@@ -94,7 +97,7 @@ public class CKDTreeMap<V> {
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = root.left;
+    Node<V> cur = root.GCAS_READ_LEFT_CHILD(this);
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -106,13 +109,14 @@ public class CKDTreeMap<V> {
 
       if (keyCompare(key, cur.key, depth++) < 0) {
         // if left child are InternalNode, then check their generation.
-        Node<V> left = cur.left;
+        Node<V> left = cur.GCAS_READ_LEFT_CHILD(this);
 
         // only perform GCAS on InternalNode
         if (left instanceof InternalNode) {
           if (left.gen != startGen) {
             // do GCAS, change the left into a new with new gen.
-            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen), this, Direction.LEFT)) {
+            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this,
+                         Direction.LEFT)) {
               // retry on cur
               continue;
             } else {
@@ -121,15 +125,15 @@ public class CKDTreeMap<V> {
           }
         }
 
-        cur = p.left;
+        cur = p.GCAS_READ_LEFT_CHILD(this);
 
       } else {
         // if right child are InternalNode, then check their generation.
-        Node<V> right = ((InternalNode<V>) cur).right;
+        Node<V> right = cur.GCAS_READ_RIGHT_CHILD(this);
 
         if (right instanceof InternalNode) {
           if (((InternalNode) right).gen != startGen) {
-            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen), this,
+            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
                          Direction.RIGHT)) {
               continue;
             } else {
@@ -138,7 +142,7 @@ public class CKDTreeMap<V> {
           }
         }
 
-        cur = p.right;
+        cur = p.GCAS_READ_RIGHT_CHILD(this);
       }
     }
 
@@ -286,10 +290,15 @@ public class CKDTreeMap<V> {
   // the gcas operation will be bound to fail. because the gen of the left child of root is old.
   // todo: left child of root should be renewed too.
   public CKDTreeMap<V> snapshot() {
-    InternalNode<V> or = readRoot();
-    InternalNode<V> nr = or.copyRootToGen(new Gen());
-    CAS_ROOT(or, nr);
-    InternalNode<V> snap = or.copyRootToGen(new Gen());
+    InternalNode<V> r = readRoot();
+    Node<V> ol = r.GCAS_READ_LEFT_CHILD(this);
+
+    InternalNode<V> nr = r.copyRootToGen(new Gen(), this);
+
+    CAS_ROOT(r, nr);
+    //    RDCSS_ROOT(r, ol, nr);
+
+    InternalNode<V> snap = r.copyRootToGen(new Gen(), this);
     return new CKDTreeMap<>(snap, this.readOnly, this.dimension);
   }
 
