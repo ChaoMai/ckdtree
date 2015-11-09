@@ -59,7 +59,6 @@ public class CKDTreeMapTest {
     }
   }
 
-  // todo: add true or false
   private void checkKeysInCKD(double[][] k, CKDTreeMap ckd) {
     for (double[] key : k) {
       Assert.assertTrue(ckd.contains(key));
@@ -228,13 +227,8 @@ public class CKDTreeMapTest {
     addMultipleDimensionDimensionDuplicateKeys();
   }
 
-  private void multithreadAddOneDimensionKeys(int samples, int threads) {
-    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
-
-    Thread[] ts = new Thread[threads];
-    int workPerThread = samples / threads;
-    for (int i = 0; i < threads; ++i) {
+  private void addWorkToThreads(Thread[] ts, double[][] k, CKDTreeMap ckd, int workPerThread) {
+    for (int i = 0; i < ts.length; ++i) {
       final int workIndex = i * workPerThread;
       ts[i] = new Thread(() -> {
         for (int j = workIndex; j < workIndex + workPerThread; ++j) {
@@ -242,6 +236,16 @@ public class CKDTreeMapTest {
         }
       });
     }
+  }
+
+  private void multithreadAddOneDimensionKeys(int samples, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilties.generateRandomArrays(samples, 1);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+
+    addWorkToThreads(ts, k, ckd, workPerThread);
 
     for (Thread t : ts) {
       t.start();
@@ -264,14 +268,8 @@ public class CKDTreeMapTest {
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-    for (int i = 0; i < threads; ++i) {
-      final int workIndex = i * workPerThread;
-      ts[i] = new Thread(() -> {
-        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
-          ckd.add(k[j], j);
-        }
-      });
-    }
+
+    addWorkToThreads(ts, k, ckd, workPerThread);
 
     for (Thread t : ts) {
       t.start();
@@ -293,14 +291,8 @@ public class CKDTreeMapTest {
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-    for (int i = 0; i < threads; ++i) {
-      final int workIndex = i * workPerThread;
-      ts[i] = new Thread(() -> {
-        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
-          ckd.add(k[j], j);
-        }
-      });
-    }
+
+    addWorkToThreads(ts, k, ckd, workPerThread);
 
     for (Thread t : ts) {
       t.start();
@@ -324,14 +316,8 @@ public class CKDTreeMapTest {
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-    for (int i = 0; i < threads; ++i) {
-      final int workIndex = i * workPerThread;
-      ts[i] = new Thread(() -> {
-        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
-          ckd.add(k[j], j);
-        }
-      });
-    }
+
+    addWorkToThreads(ts, k, ckd, workPerThread);
 
     for (Thread t : ts) {
       t.start();
@@ -384,7 +370,6 @@ public class CKDTreeMapTest {
     }
   }
 
-  // todo: finish this
   private void snapshotOnEmptyCKD() {
     int samples = 10;
     int dimension = 1;
