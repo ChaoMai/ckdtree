@@ -359,11 +359,18 @@ public class CKDTreeMap<V> {
       helpMarked1(m1u);
 
       // check sibling
-      if (info.sibling instanceof Leaf) {
+      if (info.sibling instanceof Leaf || info.sibling == null) {
         helpMarked1(m1u);
         return true;
       } else if (info.sibling instanceof InternalNode) {
-        helpMarked2(m1u);
+        // since the sibling is InternalNode, it may be not CLEAN.
+        Update update = ((InternalNode) info.sibling).GET_UPDATE();
+        if (update.state == State.CLEAN) {
+          helpMarked2(m1u);
+        } else {
+          help(update);
+        }
+
         return true;
       } else {
         throw new RuntimeException("Should not happen");
@@ -404,6 +411,7 @@ public class CKDTreeMap<V> {
       int parentDepth = r.leafDepth - 1;
       if (keyCompare(r.l.key, r.p.key, parentDepth) < 0) {
         sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
+        // todo: check the direction
         siblingDirection = Direction.LEFT;
       } else {
         sibling = r.p.GCAS_READ_LEFT_CHILD(this);
