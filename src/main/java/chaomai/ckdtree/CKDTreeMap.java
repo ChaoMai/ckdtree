@@ -43,7 +43,7 @@ public class CKDTreeMap<V> {
 
   private InternalNode<V> RDCSS_COMPLETE(boolean abort) {
     while (true) {
-      Object v = root;
+      Object v = this.root;
 
       if (v instanceof InternalNode) {
         return (InternalNode<V>) v;
@@ -98,7 +98,7 @@ public class CKDTreeMap<V> {
   }
 
   InternalNode<V> RDCSS_READ_ROOT(boolean abort) {
-    Object r = root;
+    Object r = this.root;
 
     if (r instanceof InternalNode) {
       return (InternalNode<V>) r;
@@ -271,15 +271,20 @@ public class CKDTreeMap<V> {
 
     // ichild
     if (keyCompare(info.newInternal.key, info.p.key, iu.depth) < 0) {
-      info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT);
+      if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
+        this.size.getAndIncrement();
+
+        // unflag
+        info.p.CAS_UPDATE(iu, new Update());
+      }
     } else {
-      info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT);
+      if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
+        this.size.getAndIncrement();
+
+        // unflag
+        info.p.CAS_UPDATE(iu, new Update());
+      }
     }
-
-    size.getAndIncrement();
-
-    // unflag
-    info.p.CAS_UPDATE(iu, new Update());
   }
 
   private boolean insert(double[] key, V value) {
@@ -335,12 +340,16 @@ public class CKDTreeMap<V> {
 
   // sibling is InternalNode
   private void helpMarked2(Update m2u) {
-
+    DeleteInfo<V> info = (DeleteInfo<V>) m2u.info;
   }
 
   // sibling is leaf
   private void helpMarked1(Update m1u) {
     DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
+
+    Leaf<V> os = (Leaf<V>) info.sibling;
+    int leafSkippedDepth = os.skippedDepth + 1;
+    Leaf<V> ns = new Leaf<>(os.key, os.value, leafSkippedDepth);
 
     if (info.gp.GCAS(info.p, info.sibling, this, info.siblingDirection)) {
       this.size.getAndDecrement();
@@ -359,7 +368,7 @@ public class CKDTreeMap<V> {
       helpMarked1(m1u);
 
       // check sibling
-      if (info.sibling instanceof Leaf || info.sibling == null) {
+      if (info.sibling instanceof Leaf) {
         helpMarked1(m1u);
         return true;
       } else if (info.sibling instanceof InternalNode) {
