@@ -216,7 +216,6 @@ public class CKDTreeMap<V> {
       if (res == SearchRes.RESTART) {
         continue;
       } else {
-        // todo: check type?
         return (SearchRes<V>) res;
       }
     }
@@ -253,28 +252,34 @@ public class CKDTreeMap<V> {
         break;
       }
       case DFLAG: {
+        helpDelete(update);
         break;
       }
       case MARK1: {
+        helpMarked1(update);
         break;
       }
       case MARK2: {
+        helpMarked2(update);
         break;
       }
     }
   }
 
-  private void helpInsert(Update update) {
-    InsertInfo<V> info = (InsertInfo<V>) update.info;
-    if (keyCompare(info.newInternal.key, info.p.key, update.depth) < 0) {
-      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.LEFT);
+  private void helpInsert(Update iu) {
+    InsertInfo<V> info = (InsertInfo<V>) iu.info;
+
+    // ichild
+    if (keyCompare(info.newInternal.key, info.p.key, iu.depth) < 0) {
+      info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT);
     } else {
-      info.p.GCAS(info.l, (Node<V>) info.newInternal, this, Direction.RIGHT);
+      info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT);
     }
 
-    size.getAndAdd(1);
+    size.getAndIncrement();
 
-    info.p.CAS_UPDATE(update, new Update());
+    // unflag
+    info.p.CAS_UPDATE(iu, new Update());
   }
 
   private boolean insert(double[] key, V value) {
@@ -292,18 +297,18 @@ public class CKDTreeMap<V> {
 
       InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
 
-      // IFlag
+      // iflag
       InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
-      Update nu = new Update(State.IFLAG, op, --r.leafDepth);
+      Update iu = new Update(State.IFLAG, op, /*use depth of leaf's parent*/ --r.leafDepth);
 
-      if (r.p.CAS_UPDATE(r.pupdate, nu)) {
-        helpInsert(nu);
+      if (r.p.CAS_UPDATE(r.pupdate, iu)) {
+        helpInsert(iu);
         return true;
       } else {
+        // help
         Update update = r.p.GET_UPDATE();
         help(update);
       }
-
     }
   }
 
@@ -328,8 +333,97 @@ public class CKDTreeMap<V> {
     return null;
   }
 
-  public CKDTreeMap<V> readOnlySnapshot() {
-    return null;
+  // sibling is InternalNode
+  private void helpMarked2(Update m2u) {
+
+  }
+
+  // sibling is leaf
+  private void helpMarked1(Update m1u) {
+    DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
+
+    if (info.gp.GCAS(info.p, info.sibling, this, info.siblingDirection)) {
+      this.size.getAndDecrement();
+
+      // unflag
+      info.gp.CAS_UPDATE(m1u, new Update());
+    }
+  }
+
+  private boolean helpDelete(Update du) {
+    DeleteInfo<V> info = (DeleteInfo<V>) du.info;
+
+    // mark1
+    Update m1u = new Update(State.MARK1, info, du.depth);
+    if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
+      helpMarked1(m1u);
+
+      // check sibling
+      if (info.sibling instanceof Leaf) {
+        helpMarked1(m1u);
+        return true;
+      } else if (info.sibling instanceof InternalNode) {
+        helpMarked2(m1u);
+        return true;
+      } else {
+        throw new RuntimeException("Should not happen");
+      }
+    } else {
+      // help
+      Update update = info.p.GET_UPDATE();
+      help(update);
+
+      // todo: finish this
+      // backtrack cas
+
+      return false;
+    }
+  }
+
+  boolean delete(double[] key) {
+    while (true) {
+      SearchRes<V> r = search(key);
+
+      if (!keyEqual(r.l.key, key)) {
+        return false;
+      }
+
+      if (r.gpupdate.state != State.CLEAN) {
+        help(r.gpupdate);
+        continue;
+      }
+
+      if (r.pupdate.state != State.CLEAN) {
+        help(r.pupdate);
+        continue;
+      }
+
+      // dflag
+      Node<V> sibling;
+      Direction siblingDirection;
+      int parentDepth = r.leafDepth - 1;
+      if (keyCompare(r.l.key, r.p.key, parentDepth) < 0) {
+        sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
+        siblingDirection = Direction.LEFT;
+      } else {
+        sibling = r.p.GCAS_READ_LEFT_CHILD(this);
+        siblingDirection = Direction.RIGHT;
+      }
+
+      DeleteInfo<V> op = new DeleteInfo<>(r.gp, r.p, sibling, siblingDirection, r.l, r.pupdate);
+      Update du = new Update(State.DFLAG, op, r.leafDepth);
+
+      if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
+        if (helpDelete(du)) {
+          return true;
+        } else {
+          continue;
+        }
+      } else {
+        Update update = r.p.GET_UPDATE();
+        help(update);
+      }
+    }
   }
 
   public boolean remove(double[] key) {
@@ -340,9 +434,14 @@ public class CKDTreeMap<V> {
     return this.size.get();
   }
 
+  // 1.
   // to keep invariant from root, both root and its left child must be updated.
   // otherwise, when iteration reaches the left child of root and decide to change its left child to new,
   // the gcas operation will be bound to fail. because the gen of the left child of root is old.
+  //
+  // 2.
+  // it's necessary to make sure root and its left child not changed when updating the root to new gen.
+  // otherwise, insertion may lost at some scenarios.
   public CKDTreeMap<V> snapshot() {
     while (true) {
       InternalNode<V> r = RDCSS_READ_ROOT();
@@ -357,6 +456,10 @@ public class CKDTreeMap<V> {
         continue;
       }
     }
+  }
+
+  public CKDTreeMap<V> readOnlySnapshot() {
+    return null;
   }
 
   @Override
