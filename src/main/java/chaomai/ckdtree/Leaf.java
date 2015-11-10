@@ -11,7 +11,11 @@ class Leaf<V> extends Node<V> {
   }
 
   Leaf(double[] key, V value) {
-    super(key);
+    this(key, value, 0);
+  }
+
+  Leaf(double[] key, V value, int skippedDepth) {
+    super(key, skippedDepth);
     this.value = value;
   }
 
