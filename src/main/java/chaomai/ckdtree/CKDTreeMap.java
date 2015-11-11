@@ -157,6 +157,7 @@ public class CKDTreeMap<V> {
 
     Node<V> cur = p.GCAS_READ_LEFT_CHILD(this);
 
+    // todo: since leaf also has skippedDepth, loop condition may need to change.
     while (cur instanceof InternalNode) {
       // continue searching
       gp = p;
@@ -275,14 +276,14 @@ public class CKDTreeMap<V> {
         this.size.getAndIncrement();
 
         // unflag
-        info.p.CAS_UPDATE(iu, new Update());
+        info.p.CAS_UPDATE(info.p.GET_UPDATE(), new Update());
       }
     } else {
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
 
         // unflag
-        info.p.CAS_UPDATE(iu, new Update());
+        info.p.CAS_UPDATE(info.p.GET_UPDATE(), new Update());
       }
     }
   }
@@ -310,7 +311,6 @@ public class CKDTreeMap<V> {
         helpInsert(iu);
         return true;
       } else {
-        // help
         Update update = r.p.GET_UPDATE();
         help(update);
       }
@@ -341,6 +341,20 @@ public class CKDTreeMap<V> {
   // sibling is InternalNode
   private void helpMarked2(Update m2u) {
     DeleteInfo<V> info = (DeleteInfo<V>) m2u.info;
+
+    InternalNode<V> newSibling =
+        new InternalNode<>(info.sibling.key, info.sibling.GCAS_READ_LEFT_CHILD(this),
+                           info.sibling.GCAS_READ_RIGHT_CHILD(this),
+                           info.p.skippedDepth + info.sibling.skippedDepth + 1,
+                           this.RDCSS_READ_ROOT().gen);
+
+    // dchild2
+    if (info.gp.GCAS(info.p, newSibling, this, info.siblingDirection)) {
+      this.size.getAndDecrement();
+
+      // unflag
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+    }
   }
 
   // sibling is leaf
@@ -348,14 +362,14 @@ public class CKDTreeMap<V> {
     DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
 
     Leaf<V> os = (Leaf<V>) info.sibling;
-    int leafSkippedDepth = os.skippedDepth + 1;
-    Leaf<V> ns = new Leaf<>(os.key, os.value, leafSkippedDepth);
+    Leaf<V> ns = new Leaf<>(os.key, os.value, os.skippedDepth);
 
-    if (info.gp.GCAS(info.p, info.sibling, this, info.siblingDirection)) {
+    // dchild1
+    if (info.gp.GCAS(info.p, ns, this, info.siblingDirection)) {
       this.size.getAndDecrement();
 
       // unflag
-      info.gp.CAS_UPDATE(m1u, new Update());
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
     }
   }
 
@@ -373,19 +387,26 @@ public class CKDTreeMap<V> {
         return true;
       } else if (info.sibling instanceof InternalNode) {
         // since the sibling is InternalNode, it may be not CLEAN.
-        Update update = ((InternalNode) info.sibling).GET_UPDATE();
-        if (update.state == State.CLEAN) {
-          helpMarked2(m1u);
-        } else {
-          help(update);
-        }
+        Update supdate = ((InternalNode) info.sibling).GET_UPDATE();
 
-        return true;
+        if (supdate.state == State.CLEAN) {
+          Update m2u = new Update(State.MARK2, info, du.depth);
+
+          if (((InternalNode) info.sibling).CAS_UPDATE(supdate, m2u)) {
+            helpMarked2(m2u);
+            return true;
+          } else {
+            help(supdate);
+            return false;
+          }
+        } else {
+          help(supdate);
+          return false;
+        }
       } else {
         throw new RuntimeException("Should not happen");
       }
     } else {
-      // help
       Update update = info.p.GET_UPDATE();
       help(update);
 
@@ -427,7 +448,7 @@ public class CKDTreeMap<V> {
         siblingDirection = Direction.RIGHT;
       }
 
-      DeleteInfo<V> op = new DeleteInfo<>(r.gp, r.p, sibling, siblingDirection, r.l, r.pupdate);
+      DeleteInfo<V> op = new DeleteInfo<>(r.gp, r.p, r.pupdate, sibling, siblingDirection, r.l);
       Update du = new Update(State.DFLAG, op, r.leafDepth);
 
       if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
@@ -444,7 +465,7 @@ public class CKDTreeMap<V> {
   }
 
   public boolean remove(double[] key) {
-    return false;
+    return delete(key);
   }
 
   public int size() {

@@ -236,4 +236,22 @@ public class MiscTest {
     Assert.assertEquals(8, c.a.a);
     Assert.assertEquals(9, c.a.b);
   }
+
+  @Test
+  public void testFinal2() {
+    class A {
+      final int a;
+      final int b;
+
+      A(int a, int b) {
+        this.a = a;
+        this.b = b;
+      }
+    }
+
+    A a = new A(1, 2);
+
+    Assert.assertEquals(a.a, 1);
+    //    a.a = 3;
+  }
 }

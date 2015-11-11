@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class CKDTreeMapTest {
   int dimensionSteps = 200;
-  int sampleSteps = 50000;
+  int sampleSteps = 10000;
   int threadsSteps = 1;
   int rounds = 4;
   double delta = 0.001;
@@ -29,7 +29,7 @@ public class CKDTreeMapTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double[] k = {Double.POSITIVE_INFINITY};
 
-    Object res1 = ckd.search(k);
+    SearchRes<Integer> res1 = ckd.search(k);
 
     Assert.assertTrue(ckd.contains(k));
   }
@@ -37,20 +37,6 @@ public class CKDTreeMapTest {
   @Test
   public void testSearch() throws Exception {
     searchDummy();
-  }
-
-  private void addOneKey() {
-    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[] k1 = {1};
-    ckd.add(k1, 1);
-
-    Assert.assertTrue(ckd.contains(k1));
-
-    Object res = ckd.search(k1);
-    Assert.assertNotEquals(null, res);
-
-    SearchRes<Integer> r = (SearchRes<Integer>) res;
-    Assert.assertArrayEquals(k1, r.l.key, delta);
   }
 
   private void addKeysToCKD(double[][] k, CKDTreeMap ckd) {
@@ -63,12 +49,24 @@ public class CKDTreeMapTest {
     for (double[] key : k) {
       Assert.assertTrue(ckd.contains(key));
 
-      Object res = ckd.search(key);
+      SearchRes<Integer> res = ckd.search(key);
       Assert.assertNotEquals(null, res);
 
-      SearchRes<Integer> r = (SearchRes<Integer>) res;
-      Assert.assertArrayEquals(key, r.l.key, delta);
+      Assert.assertArrayEquals(key, res.l.key, delta);
     }
+  }
+
+  private void addOneKey() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[] k1 = {1};
+    ckd.add(k1, 1);
+
+    Assert.assertTrue(ckd.contains(k1));
+
+    SearchRes<Integer> res = ckd.search(k1);
+    Assert.assertNotEquals(null, res);
+
+    Assert.assertArrayEquals(k1, res.l.key, delta);
   }
 
   private void addOneDimensionKeys(int samples) {
@@ -361,12 +359,12 @@ public class CKDTreeMapTest {
       }
       multithreadAddOneDimensionKeys(samples, threads);
 
-      //      if (isVerbose) {
-      //        System.out.println(
-      //            String.format("add Multiple (%d) threads add One Dimension Duplicate (%d) Keys",
-      //                          threads, samples));
-      //      }
-      //      multithreadAddOneDimensionDuplicateKeys(samples, threads);
+      if (isVerbose) {
+        System.out.println(
+            String.format("add Multiple (%d) threads add One Dimension Duplicate (%d) Keys",
+                          threads, samples));
+      }
+      multithreadAddOneDimensionDuplicateKeys(samples, threads);
 
       if (isVerbose) {
         System.out.println(
@@ -375,13 +373,43 @@ public class CKDTreeMapTest {
       }
       multithreadAddMultipleDimensionKeys(samples, dimension, threads);
 
-      //      if (isVerbose) {
-      //        System.out.println(String.format(
-      //            "add Multiple (%d) threads add Multiple (%d) Dimension Duplicate (%d) Keys", threads,
-      //            dimension, samples));
-      //      }
-      //      multithreadAddMultipleDimensionDuplicateKeys(samples, dimension, threads);
+      if (isVerbose) {
+        System.out.println(String.format(
+            "add Multiple (%d) threads add Multiple (%d) Dimension Duplicate (%d) Keys", threads,
+            dimension, samples));
+      }
+      multithreadAddMultipleDimensionDuplicateKeys(samples, dimension, threads);
     }
+  }
+
+  private void deleteOnekey() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+
+    double[] k1 = {1};
+    ckd.add(k1, 1);
+
+    Assert.assertTrue(ckd.contains(k1));
+
+    SearchRes<Integer> res = ckd.search(k1);
+    Assert.assertNotEquals(null, res);
+
+    Assert.assertArrayEquals(k1, res.l.key, delta);
+
+    ckd.remove(k1);
+
+    SearchRes<Integer> res1 = ckd.search(k1);
+    Assert.assertFalse(ckd.contains(k1));
+
+    InternalNode<Integer> root = ckd.RDCSS_READ_ROOT();
+
+    Assert.assertEquals(null, res1.gp);
+    Assert.assertEquals(root, res1.p);
+    Assert.assertEquals(root.left, res1.l);
+  }
+
+  @Test
+  public void testDelete() {
+    deleteOnekey();
   }
 
   private void snapshotOnEmptyCKD() {
