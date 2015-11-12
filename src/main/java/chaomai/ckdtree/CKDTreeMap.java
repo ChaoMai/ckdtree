@@ -410,8 +410,7 @@ public class CKDTreeMap<V> {
       Update update = info.p.GET_UPDATE();
       help(update);
 
-      // todo: finish this
-      // backtrack cas
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
 
       return false;
     }
