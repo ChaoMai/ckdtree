@@ -3,7 +3,7 @@ package chaomai.ckdtree;
 /**
  * Created by chaomai on 11/10/15.
  */
-public class RDCSSDescriptor<V> {
+class RDCSSDescriptor<V> {
   InternalNode<V> ov;
   Node<V> ol;
   InternalNode<V> nv;

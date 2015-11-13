@@ -269,8 +269,8 @@ public class CKDTreeMap<V> {
   private void helpInsert(Update iu) {
     InsertInfo<V> info = (InsertInfo<V>) iu.info;
 
-    // ichild
-    if (keyCompare(info.newInternal.key, info.p.key, iu.depth) < 0) {
+    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+      // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
         this.size.getAndIncrement();
 
@@ -286,6 +286,24 @@ public class CKDTreeMap<V> {
         info.p.CAS_UPDATE(iu, new Update());
       }
     }
+
+    //    // ichild
+    //    if (keyCompare(info.newInternal.key, info.p.key, iu.depth) < 0) {
+    //      if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
+    //        this.size.getAndIncrement();
+    //
+    //        // unflag
+    //        info.p.CAS_UPDATE(iu, new Update());
+    //      }
+    //    } else {
+    //      // ichild
+    //      if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
+    //        this.size.getAndIncrement();
+    //
+    //        // unflag
+    //        info.p.CAS_UPDATE(iu, new Update());
+    //      }
+    //    }
   }
 
   private boolean insert(double[] key, V value) {
