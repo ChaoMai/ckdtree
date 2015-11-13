@@ -342,25 +342,27 @@ public class CKDTreeMap<V> {
   private void helpMarked2(Update m2u) {
     DeleteInfo<V> info = (DeleteInfo<V>) m2u.info;
 
-    InternalNode<V> newSibling =
-        new InternalNode<>(info.sibling.key, info.sibling.GCAS_READ_LEFT_CHILD(this),
-                           info.sibling.GCAS_READ_RIGHT_CHILD(this),
-                           info.p.skippedDepth + ((InternalNode<V>) info.sibling).skippedDepth + 1,
-                           this.RDCSS_READ_ROOT().gen);
+    Node<V> sibling;
+
+    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+      sibling = info.p.GCAS_READ_RIGHT_CHILD(this);
+    } else {
+      sibling = info.p.GCAS_READ_LEFT_CHILD(this);
+    }
+
+    InternalNode<V> newSibling = new InternalNode<>(sibling.key, sibling.GCAS_READ_LEFT_CHILD(this),
+                                                    sibling.GCAS_READ_RIGHT_CHILD(this),
+                                                    info.p.skippedDepth +
+                                                    ((InternalNode<V>) sibling).skippedDepth + 1,
+                                                    sibling.gen);
 
     Direction direction;
 
-    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+    if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
       direction = Direction.LEFT;
     } else {
       direction = Direction.RIGHT;
     }
-
-    //    if (keyCompare(info.l.key, info.p.key, m2u.depth) < 0) {
-    //      direction = Direction.LEFT;
-    //    } else {
-    //      direction = Direction.RIGHT;
-    //    }
 
     // dchild2
     if (info.gp.GCAS(info.p, newSibling, this, direction)) {
@@ -375,22 +377,23 @@ public class CKDTreeMap<V> {
   private void helpMarked1(Update m1u) {
     DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
 
-    Leaf<V> os = (Leaf<V>) info.sibling;
-    Leaf<V> ns = new Leaf<>(os.key, os.value);
+    Node<V> sibling;
+
+    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+      sibling = info.p.GCAS_READ_RIGHT_CHILD(this);
+    } else {
+      sibling = info.p.GCAS_READ_LEFT_CHILD(this);
+    }
+
+    Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
     Direction direction;
 
-    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+    if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
       direction = Direction.LEFT;
     } else {
       direction = Direction.RIGHT;
     }
-
-    //    if (keyCompare(info.l.key, info.p.key, m1u.depth) < 0) {
-    //      direction = Direction.LEFT;
-    //    } else {
-    //      direction = Direction.RIGHT;
-    //    }
 
     // dchild1
     if (info.gp.GCAS(info.p, ns, this, direction)) {
@@ -407,19 +410,28 @@ public class CKDTreeMap<V> {
     // mark1
     Update m1u = new Update(State.MARK1, info, du.depth);
     if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
+      // sibling of parent's child should be obtained after parent marked.
+      // since before parent parked, children aren't stable.
+      Node<V> sibling;
+
+      if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
+        sibling = info.p.GCAS_READ_RIGHT_CHILD(this);
+      } else {
+        sibling = info.p.GCAS_READ_LEFT_CHILD(this);
+      }
 
       // check sibling
-      if (info.sibling instanceof Leaf) {
+      if (sibling instanceof Leaf) {
         helpMarked1(m1u);
         return true;
-      } else if (info.sibling instanceof InternalNode) {
+      } else if (sibling instanceof InternalNode) {
         // since the sibling is InternalNode, it may be not CLEAN.
-        Update supdate = ((InternalNode) info.sibling).GET_UPDATE();
+        Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
         if (supdate.state == State.CLEAN) {
           Update m2u = new Update(State.MARK2, info, du.depth);
 
-          if (((InternalNode) info.sibling).CAS_UPDATE(supdate, m2u)) {
+          if (((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
             helpMarked2(m2u);
             return true;
           } else {
@@ -463,22 +475,7 @@ public class CKDTreeMap<V> {
       }
 
       // dflag
-      Node<V> sibling;
-      Direction siblingDirection;
-
-      if (r.l == r.p.GCAS_READ_LEFT_CHILD(this)) {
-        sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
-      } else {
-        sibling = r.p.GCAS_READ_LEFT_CHILD(this);
-      }
-
-      //      if (keyCompare(r.l.key, r.p.key, r.leafDepth - 1) < 0) {
-      //        sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
-      //      } else {
-      //        sibling = r.p.GCAS_READ_LEFT_CHILD(this);
-      //      }
-
-      DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, sibling, r.l);
+      DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, r.l);
       Update du = new Update(State.DFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
 
       if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
