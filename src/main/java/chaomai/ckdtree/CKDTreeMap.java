@@ -278,6 +278,7 @@ public class CKDTreeMap<V> {
         info.p.CAS_UPDATE(iu, new Update());
       }
     } else {
+      // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
 
