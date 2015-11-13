@@ -397,9 +397,9 @@ public class CKDTreeMapTest {
 
     ckd.remove(k1);
 
-    SearchRes<Integer> res1 = ckd.search(k1);
     Assert.assertFalse(ckd.contains(k1));
 
+    SearchRes<Integer> res1 = ckd.search(k1);
     InternalNode<Integer> root = ckd.RDCSS_READ_ROOT();
 
     Assert.assertEquals(null, res1.gp);

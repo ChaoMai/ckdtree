@@ -12,6 +12,7 @@ abstract class Node<V> {
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
   private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "prev");
+
   final double[] key;
   final Gen gen;
   final int skippedDepth;
