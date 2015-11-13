@@ -305,7 +305,7 @@ public class CKDTreeMap<V> {
 
       // iflag
       InsertInfo<V> info = new InsertInfo<>(r.p, newInternal, r.l);
-      Update iu = new Update(State.IFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
+      Update iu = new Update(State.IFLAG, info);
 
       if (r.p.CAS_UPDATE(r.pupdate, iu)) {
         helpInsert(iu);
@@ -385,22 +385,41 @@ public class CKDTreeMap<V> {
       sibling = info.p.GCAS_READ_LEFT_CHILD(this);
     }
 
-    Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
+    // although the type of sibling seems to be known before this method, it just happens when there
+    // is only one thread.
+    // when multiple threads exist, other find marked parent won't know the type of sibling.
 
-    Direction direction;
+    if (sibling instanceof Leaf) {
+      Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
-    if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
-      direction = Direction.LEFT;
+      Direction direction;
+
+      if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
+        direction = Direction.LEFT;
+      } else {
+        direction = Direction.RIGHT;
+      }
+
+      // dchild1
+      if (info.gp.GCAS(info.p, ns, this, direction)) {
+        this.size.getAndDecrement();
+
+        // unflag
+        info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+      }
     } else {
-      direction = Direction.RIGHT;
-    }
+      Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
-    // dchild1
-    if (info.gp.GCAS(info.p, ns, this, direction)) {
-      this.size.getAndDecrement();
-
-      // unflag
-      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+      if (supdate.state == State.CLEAN) {
+        Update m2u = new Update(State.MARK2, info);
+        if (((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
+          helpMarked2(m1u);
+        } else {
+          help(supdate);
+        }
+      } else {
+        help(supdate);
+      }
     }
   }
 
@@ -408,7 +427,7 @@ public class CKDTreeMap<V> {
     DeleteInfo<V> info = (DeleteInfo<V>) du.info;
 
     // mark1
-    Update m1u = new Update(State.MARK1, info, du.depth);
+    Update m1u = new Update(State.MARK1, info);
     if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
       // sibling of parent's child should be obtained after parent marked.
       // since before parent parked, children aren't stable.
@@ -425,11 +444,11 @@ public class CKDTreeMap<V> {
         helpMarked1(m1u);
         return true;
       } else if (sibling instanceof InternalNode) {
-        // since the sibling is InternalNode, it may be not CLEAN.
+        // since the sibling is InternalNode, it may not be CLEAN.
         Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
         if (supdate.state == State.CLEAN) {
-          Update m2u = new Update(State.MARK2, info, du.depth);
+          Update m2u = new Update(State.MARK2, info);
 
           if (((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
             helpMarked2(m2u);
@@ -476,7 +495,7 @@ public class CKDTreeMap<V> {
 
       // dflag
       DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, r.l);
-      Update du = new Update(State.DFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
+      Update du = new Update(State.DFLAG, info);
 
       if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
         if (helpDelete(du)) {
