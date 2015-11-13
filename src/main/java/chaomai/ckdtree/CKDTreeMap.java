@@ -286,24 +286,6 @@ public class CKDTreeMap<V> {
         info.p.CAS_UPDATE(iu, new Update());
       }
     }
-
-    //    // ichild
-    //    if (keyCompare(info.newInternal.key, info.p.key, iu.depth) < 0) {
-    //      if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
-    //        this.size.getAndIncrement();
-    //
-    //        // unflag
-    //        info.p.CAS_UPDATE(iu, new Update());
-    //      }
-    //    } else {
-    //      // ichild
-    //      if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
-    //        this.size.getAndIncrement();
-    //
-    //        // unflag
-    //        info.p.CAS_UPDATE(iu, new Update());
-    //      }
-    //    }
   }
 
   private boolean insert(double[] key, V value) {
@@ -367,11 +349,18 @@ public class CKDTreeMap<V> {
                            this.RDCSS_READ_ROOT().gen);
 
     Direction direction;
-    if (keyCompare(info.l.key, info.p.key, m2u.depth) < 0) {
+
+    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
       direction = Direction.LEFT;
     } else {
       direction = Direction.RIGHT;
     }
+
+    //    if (keyCompare(info.l.key, info.p.key, m2u.depth) < 0) {
+    //      direction = Direction.LEFT;
+    //    } else {
+    //      direction = Direction.RIGHT;
+    //    }
 
     // dchild2
     if (info.gp.GCAS(info.p, newSibling, this, direction)) {
@@ -390,11 +379,18 @@ public class CKDTreeMap<V> {
     Leaf<V> ns = new Leaf<>(os.key, os.value);
 
     Direction direction;
-    if (keyCompare(info.l.key, info.p.key, m1u.depth) < 0) {
+
+    if (info.l == info.p.GCAS_READ_LEFT_CHILD(this)) {
       direction = Direction.LEFT;
     } else {
       direction = Direction.RIGHT;
     }
+
+    //    if (keyCompare(info.l.key, info.p.key, m1u.depth) < 0) {
+    //      direction = Direction.LEFT;
+    //    } else {
+    //      direction = Direction.RIGHT;
+    //    }
 
     // dchild1
     if (info.gp.GCAS(info.p, ns, this, direction)) {
@@ -470,11 +466,17 @@ public class CKDTreeMap<V> {
       Node<V> sibling;
       Direction siblingDirection;
 
-      if (keyCompare(r.l.key, r.p.key, r.leafDepth - 1) < 0) {
+      if (r.l == r.p.GCAS_READ_LEFT_CHILD(this)) {
         sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
       } else {
         sibling = r.p.GCAS_READ_LEFT_CHILD(this);
       }
+
+      //      if (keyCompare(r.l.key, r.p.key, r.leafDepth - 1) < 0) {
+      //        sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
+      //      } else {
+      //        sibling = r.p.GCAS_READ_LEFT_CHILD(this);
+      //      }
 
       DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, sibling, r.l);
       Update du = new Update(State.DFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
