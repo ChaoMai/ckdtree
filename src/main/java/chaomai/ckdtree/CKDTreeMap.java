@@ -275,14 +275,14 @@ public class CKDTreeMap<V> {
         this.size.getAndIncrement();
 
         // unflag
-        info.p.CAS_UPDATE(info.p.GET_UPDATE(), new Update());
+        info.p.CAS_UPDATE(iu, new Update());
       }
     } else {
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
 
         // unflag
-        info.p.CAS_UPDATE(info.p.GET_UPDATE(), new Update());
+        info.p.CAS_UPDATE(iu, new Update());
       }
     }
   }
