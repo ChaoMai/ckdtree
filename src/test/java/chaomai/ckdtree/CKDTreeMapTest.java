@@ -8,7 +8,7 @@ import org.junit.Test;
  */
 
 public class CKDTreeMapTest {
-  int dimensionSteps = 200;
+  int dimensionSteps = 3;
   int sampleSteps = 10000;
   int threadsSteps = 1;
   int rounds = 4;

@@ -15,7 +15,6 @@ abstract class Node<V> {
 
   final double[] key;
   final Gen gen;
-  final int skippedDepth;
   volatile Node<V> left;
   volatile Node<V> right;
   volatile Node<V> prev;
@@ -25,20 +24,15 @@ abstract class Node<V> {
   }
 
   Node(double[] key) {
-    this(key, null, null, null, 0);
+    this(key, null, null, null);
   }
 
-  Node(double[] key, int skippedDepth) {
-    this(key, null, null, null, skippedDepth);
-  }
-
-  Node(double[] key, Node<V> left, Node<V> right, Gen gen, int skippedDepth) {
+  Node(double[] key, Node<V> left, Node<V> right, Gen gen) {
     this.key = key;
     this.left = left;
     this.right = right;
     this.prev = null;
     this.gen = gen;
-    this.skippedDepth = skippedDepth;
   }
 
   private boolean CAS_LEFT(Node<V> old, Node<V> n) {
