@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 class InternalNode<V> extends Node<V> {
   private static final AtomicReferenceFieldUpdater<InternalNode, Update> updateUpdater =
       AtomicReferenceFieldUpdater.newUpdater(InternalNode.class, Update.class, "update");
+  final int skippedDepth;
   private volatile Update update;
 
   InternalNode(double[] key, Node<V> left, Node<V> right, int skippedDepth, Gen gen) {
@@ -16,8 +17,9 @@ class InternalNode<V> extends Node<V> {
 
   InternalNode(double[] key, Node<V> left, Node<V> right, Update update, int skippedDepth,
                Gen gen) {
-    super(key, left, right, gen, skippedDepth);
+    super(key, left, right, gen);
     this.update = update;
+    this.skippedDepth = skippedDepth;
   }
 
   InternalNode<V> renewed(Gen newGen, CKDTreeMap<V> ckd) {
