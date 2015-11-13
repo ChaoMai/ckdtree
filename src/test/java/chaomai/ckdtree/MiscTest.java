@@ -1,8 +1,10 @@
 package chaomai.ckdtree;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static org.junit.Assert.*;
 
@@ -41,9 +43,9 @@ public class MiscTest {
     }
 
     class CA {
-      int a;
       final int b;
       final U c;
+      int a;
 
       CA(int a, int b, U c) {
         this.a = a;
@@ -177,5 +179,79 @@ public class MiscTest {
     double[] leftKey = key.clone();
     leftKey[0] = Double.NEGATIVE_INFINITY;
     assertFalse(Arrays.equals(key, leftKey));
+  }
+
+  @Test
+  public void testObjectFiled() {
+    class A {
+      int a;
+      int b;
+
+      A(int a, int b) {
+        this.a = a;
+        this.b = b;
+      }
+    }
+
+    class B {
+      int c;
+
+      B(int c) {
+        this.c = c;
+      }
+    }
+
+    class C {
+      volatile A a;
+      volatile B b;
+
+      AtomicReferenceFieldUpdater<C, A> aUpdater =
+          AtomicReferenceFieldUpdater.newUpdater(C.class, A.class, "a");
+
+      C(int a, int b, int c) {
+        this.a = new A(a, b);
+        this.b = new B(c);
+      }
+
+      C(A a, B b) {
+        this.a = a;
+        this.b = b;
+      }
+    }
+
+    A a = new A(1, 2);
+    B b = new B(3);
+    C c = new C(a, b);
+    Assert.assertEquals(1, c.a.a);
+    Assert.assertEquals(2, c.a.b);
+    Assert.assertEquals(3, c.b.c);
+
+    a.a = 100;
+
+    Assert.assertEquals(100, c.a.a);
+
+    A na = new A(8, 9);
+    c.aUpdater.compareAndSet(c, a, na);
+
+    Assert.assertEquals(8, c.a.a);
+    Assert.assertEquals(9, c.a.b);
+  }
+
+  @Test
+  public void testFinal2() {
+    class A {
+      final int a;
+      final int b;
+
+      A(int a, int b) {
+        this.a = a;
+        this.b = b;
+      }
+    }
+
+    A a = new A(1, 2);
+
+    Assert.assertEquals(a.a, 1);
+    //    a.a = 3;
   }
 }

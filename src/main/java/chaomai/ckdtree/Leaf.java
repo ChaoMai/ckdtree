@@ -4,10 +4,10 @@ package chaomai.ckdtree;
  * Created by chaomai on 11/1/15.
  */
 class Leaf<V> extends Node<V> {
-  V value;
+  final V value;
 
   Leaf(double[] key) {
-    super(key);
+    this(key, null);
   }
 
   Leaf(double[] key, V value) {

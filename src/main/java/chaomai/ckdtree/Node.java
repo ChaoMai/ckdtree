@@ -7,14 +7,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 abstract class Node<V> {
   private static final AtomicReferenceFieldUpdater<Node, Node> leftUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "left");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "left");
   private static final AtomicReferenceFieldUpdater<Node, Node> rightUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "right");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
   private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater =
-      AtomicReferenceFieldUpdater
-          .newUpdater(Node.class, Node.class, "prev");
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "prev");
   final double[] key;
   final Gen gen;
   volatile Node<V> left;
@@ -49,6 +46,14 @@ abstract class Node<V> {
     return prevUpdater.compareAndSet(this, old, n);
   }
 
+  protected void WRITE_LEFT(Node<V> left) {
+    leftUpdater.set(this, left);
+  }
+
+  protected void WRITE_RIGHT(Node<V> right) {
+    rightUpdater.set(this, right);
+  }
+
   protected void WRITE_PREV(Node<V> old) {
     prevUpdater.set(this, old);
   }
@@ -58,7 +63,7 @@ abstract class Node<V> {
       return null;
     } else {
       Node prev = n.prev;
-      InternalNode<V> root = ckd.readRoot();
+      InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
 
       if (prev == null) {
         return n;
@@ -80,7 +85,7 @@ abstract class Node<V> {
           }
         }
       } else if (prev instanceof InternalNode || prev instanceof Leaf) {
-        if (root.gen == gen && ckd.nonReadOnly()) {
+        if (root.gen == this.gen && ckd.nonReadOnly()) {
           if (n.CAS_PREV(prev, null)) {
             return n;
           } else {
@@ -119,6 +124,28 @@ abstract class Node<V> {
       default: {
         throw new RuntimeException("Should not happen");
       }
+    }
+  }
+
+  protected Node<V> GCAS_READ_LEFT_CHILD(CKDTreeMap<V> ckd) {
+    Node<V> left = this.left;
+    Node<V> prev = left.prev;
+
+    if (prev == null) {
+      return left;
+    } else {
+      return GCAS_COMPLETE(left, ckd, Direction.LEFT);
+    }
+  }
+
+  protected Node<V> GCAS_READ_RIGHT_CHILD(CKDTreeMap<V> ckd) {
+    Node<V> right = this.right;
+    Node<V> prev = right.prev;
+
+    if (prev == null) {
+      return right;
+    } else {
+      return GCAS_COMPLETE(right, ckd, Direction.RIGHT);
     }
   }
 
