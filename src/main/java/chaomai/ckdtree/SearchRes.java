@@ -5,12 +5,12 @@ package chaomai.ckdtree;
  */
 class SearchRes<V> {
   static final Object RESTART = new Object();
-  InternalNode<V> gp;
-  Update gpupdate;
-  InternalNode<V> p;
-  Update pupdate;
-  Leaf<V> l;
-  int leafDepth;
+  final InternalNode<V> gp;
+  final Update gpupdate;
+  final InternalNode<V> p;
+  final Update pupdate;
+  final Leaf<V> l;
+  final int leafDepth;
 
   SearchRes(InternalNode<V> gp, Update gpupdate, InternalNode<V> p, Update pupdate, Leaf<V> l,
             int leafDepth) {

@@ -157,7 +157,6 @@ public class CKDTreeMap<V> {
 
     Node<V> cur = p.GCAS_READ_LEFT_CHILD(this);
 
-    // todo: since leaf also has skippedDepth, loop condition may need to change.
     while (cur instanceof InternalNode) {
       // continue searching
       gp = p;
@@ -304,8 +303,8 @@ public class CKDTreeMap<V> {
       InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
 
       // iflag
-      InsertInfo<V> op = new InsertInfo<>(r.p, newInternal, r.l);
-      Update iu = new Update(State.IFLAG, op, /*use depth of leaf's parent*/ --r.leafDepth);
+      InsertInfo<V> info = new InsertInfo<>(r.p, newInternal, r.l);
+      Update iu = new Update(State.IFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
 
       if (r.p.CAS_UPDATE(r.pupdate, iu)) {
         helpInsert(iu);
@@ -345,11 +344,18 @@ public class CKDTreeMap<V> {
     InternalNode<V> newSibling =
         new InternalNode<>(info.sibling.key, info.sibling.GCAS_READ_LEFT_CHILD(this),
                            info.sibling.GCAS_READ_RIGHT_CHILD(this),
-                           info.p.skippedDepth + info.sibling.skippedDepth + 1,
+                           info.p.skippedDepth + ((InternalNode<V>) info.sibling).skippedDepth + 1,
                            this.RDCSS_READ_ROOT().gen);
 
+    Direction direction;
+    if (keyCompare(info.l.key, info.p.key, m2u.depth) < 0) {
+      direction = Direction.LEFT;
+    } else {
+      direction = Direction.RIGHT;
+    }
+
     // dchild2
-    if (info.gp.GCAS(info.p, newSibling, this, info.siblingDirection)) {
+    if (info.gp.GCAS(info.p, newSibling, this, direction)) {
       this.size.getAndDecrement();
 
       // unflag
@@ -362,10 +368,17 @@ public class CKDTreeMap<V> {
     DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
 
     Leaf<V> os = (Leaf<V>) info.sibling;
-    Leaf<V> ns = new Leaf<>(os.key, os.value, os.skippedDepth);
+    Leaf<V> ns = new Leaf<>(os.key, os.value);
+
+    Direction direction;
+    if (keyCompare(info.l.key, info.p.key, m1u.depth) < 0) {
+      direction = Direction.LEFT;
+    } else {
+      direction = Direction.RIGHT;
+    }
 
     // dchild1
-    if (info.gp.GCAS(info.p, ns, this, info.siblingDirection)) {
+    if (info.gp.GCAS(info.p, ns, this, direction)) {
       this.size.getAndDecrement();
 
       // unflag
@@ -379,7 +392,6 @@ public class CKDTreeMap<V> {
     // mark1
     Update m1u = new Update(State.MARK1, info, du.depth);
     if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
-      helpMarked1(m1u);
 
       // check sibling
       if (info.sibling instanceof Leaf) {
@@ -410,6 +422,7 @@ public class CKDTreeMap<V> {
       Update update = info.p.GET_UPDATE();
       help(update);
 
+      // backtrack cas
       info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
 
       return false;
@@ -437,18 +450,15 @@ public class CKDTreeMap<V> {
       // dflag
       Node<V> sibling;
       Direction siblingDirection;
-      int parentDepth = r.leafDepth - 1;
-      if (keyCompare(r.l.key, r.p.key, parentDepth) < 0) {
+
+      if (keyCompare(r.l.key, r.p.key, r.leafDepth - 1) < 0) {
         sibling = r.p.GCAS_READ_RIGHT_CHILD(this);
-        // todo: check the direction
-        siblingDirection = Direction.LEFT;
       } else {
         sibling = r.p.GCAS_READ_LEFT_CHILD(this);
-        siblingDirection = Direction.RIGHT;
       }
 
-      DeleteInfo<V> op = new DeleteInfo<>(r.gp, r.p, r.pupdate, sibling, siblingDirection, r.l);
-      Update du = new Update(State.DFLAG, op, r.leafDepth);
+      DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, sibling, r.l);
+      Update du = new Update(State.DFLAG, info, /*use depth of leaf's parent*/ r.leafDepth - 1);
 
       if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
         if (helpDelete(du)) {
