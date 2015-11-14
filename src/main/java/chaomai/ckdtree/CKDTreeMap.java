@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> {
+public class CKDTreeMap<V> implements Iterable<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
@@ -330,8 +330,45 @@ public class CKDTreeMap<V> {
     return keyEqual(sr.l.key, key);
   }
 
+  @Override
   public Iterator<V> iterator() {
-    return null;
+    if (isReadOnly()) {
+      readOnlySnapshot().readOnlyIterator();
+    }
+
+    Iterator<V> it = new Iterator<V>() {
+      @Override
+      public boolean hasNext() {
+        return false;
+      }
+
+      @Override
+      public V next() {
+        return null;
+      }
+    };
+
+    return it;
+  }
+
+  public Iterator<V> readOnlyIterator() {
+    if (nonReadOnly()) {
+      readOnlySnapshot().readOnlyIterator();
+    }
+
+    Iterator<V> readOnlyIt = new Iterator<V>() {
+      @Override
+      public boolean hasNext() {
+        return false;
+      }
+
+      @Override
+      public V next() {
+        return null;
+      }
+    };
+
+    return readOnlyIt;
   }
 
   public V get(Object key) {
