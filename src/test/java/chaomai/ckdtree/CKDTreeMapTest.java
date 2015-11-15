@@ -14,7 +14,7 @@ public class CKDTreeMapTest {
   int dimensionSteps = 1;
   int sampleSteps = 100000;
   int threadsSteps = 10;
-  int rounds = 4;
+  int rounds = 5;
   double delta = 0.001;
   boolean isVerbose = true;
 
@@ -609,6 +609,19 @@ public class CKDTreeMapTest {
     snapshotOnOneDimensionCKD();
   }
 
+  private String KeyToString(double[] key) {
+    String ret = new String();
+    for (double d : key) {
+      ret += d + ",";
+    }
+
+    return ret;
+  }
+
+  private void printEntry(Map.Entry<double[], Integer> l) {
+    System.out.println(String.format("<[%s], %d>", KeyToString(l.getKey()), l.getValue()));
+  }
+
   private void simpleIteration() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(3);
     // at some point, the key of newInternal would equal to its parent's key.
@@ -624,12 +637,14 @@ public class CKDTreeMapTest {
 
     Assert.assertEquals(k.length, ckd.size());
 
-    for (Map.Entry<double[], Integer> l : ckd) {
-      System.out.println(String.format("(%d)", l.getValue()));
+    if (isVerbose) {
+      for (Map.Entry<double[], Integer> l : ckd) {
+        printEntry(l);
+      }
     }
   }
 
-  private void iteration() {
+  private void randomIteration() {
     int dimension = 10;
     int samples = 500;
     int threads = 4;
@@ -651,7 +666,9 @@ public class CKDTreeMapTest {
     ArrayList<Map.Entry<double[], Integer>> list = new ArrayList<>();
 
     for (Map.Entry<double[], Integer> l : ckd) {
-      System.out.println(String.format("(%d)", l.getValue()));
+      if (isVerbose) {
+        printEntry(l);
+      }
       list.add(l);
     }
 
@@ -661,6 +678,6 @@ public class CKDTreeMapTest {
   @Test
   public void testIterator() throws Exception {
     simpleIteration();
-    iteration();
+    randomIteration();
   }
 }
