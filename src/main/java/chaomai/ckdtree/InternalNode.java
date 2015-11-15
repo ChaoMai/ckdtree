@@ -23,10 +23,6 @@ class InternalNode<V> extends Node<V> {
   }
 
   InternalNode<V> renewed(Gen newGen, CKDTreeMap<V> ckd) {
-    // todo: should perform a deep copy here(everything here and things in `update`)
-    // todo: or just create new `update`
-    // todo: any optimization?
-
     Node<V> left = this.GCAS_READ_LEFT_CHILD(ckd);
     Node<V> right = this.GCAS_READ_RIGHT_CHILD(ckd);
     return new InternalNode<>(this.key, left, right, new Update(), this.skippedDepth, newGen);
