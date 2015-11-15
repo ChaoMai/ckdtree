@@ -1,8 +1,6 @@
 package chaomai.ckdtree;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -11,7 +9,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> implements Iterable<V> {
+public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
+  //public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
@@ -331,13 +330,14 @@ public class CKDTreeMap<V> implements Iterable<V> {
     return keyEqual(sr.l.key, key);
   }
 
-  // since concurrent operations change the structure of the tree and increase the complexity of iteration,
-  // the iterator is readonly.
+  //   since concurrent operations change the structure of the tree and increase the complexity of iteration,
+  //   the iterator is readonly.
   @Override
-  public Iterator<V> iterator() {
-    Iterator<V> it = new Iterator<V>() {
-      private CKDTreeMap<V> snapshotCKD = snapshot();
-      private Node<V> nextNode = snapshotCKD.RDCSS_READ_ROOT();
+  public Iterator<Map.Entry<double[], V>> iterator() {
+    Iterator<Map.Entry<double[], V>> it = new Iterator<Map.Entry<double[], V>>() {
+      Stack<Node<V>> parents = new Stack<>();
+      private CKDTreeMap<V> readOnlySnapshotCKD = readOnlySnapshot();
+      private Node<V> nextNode = readOnlySnapshotCKD.RDCSS_READ_ROOT();
 
       @Override
       public boolean hasNext() {
@@ -345,20 +345,34 @@ public class CKDTreeMap<V> implements Iterable<V> {
       }
 
       @Override
-      public V next() {
+      public Map.Entry<double[], V> next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
 
-        V key = null;
+        V key;
 
-        // since the ckd is not read only.
-        if (nextNode.GCAS_READ_LEFT_CHILD(snapshotCKD) != null) {
-          // should do a cas here.
-          nextNode = nextNode.GCAS_READ_LEFT_CHILD(snapshotCKD);
+        // since the ckd now is readonly, just directly access two child fields.
+        parents.push(readOnlySnapshotCKD.RDCSS_READ_ROOT().left);
+        Node<V> cur;
+
+        while (!parents.isEmpty()) {
+          cur = parents.pop();
+
+          if (cur.left != null) {
+            parents.push(cur.left);
+          }
+
+          if (cur.right != null) {
+            parents.push(cur.right);
+          }
+
+          if (cur instanceof Leaf) {
+            return new AbstractMap.SimpleEntry<>(cur.key, (V) ((Leaf) cur).value);
+          }
         }
 
-        return key;
+        throw new RuntimeException("Should not happen");
       }
     };
 
