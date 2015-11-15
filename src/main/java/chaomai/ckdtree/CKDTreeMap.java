@@ -2,6 +2,7 @@ package chaomai.ckdtree;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -332,43 +333,34 @@ public class CKDTreeMap<V> implements Iterable<V> {
 
   @Override
   public Iterator<V> iterator() {
-    if (isReadOnly()) {
-      readOnlySnapshot().readOnlyIterator();
-    }
-
     Iterator<V> it = new Iterator<V>() {
+      private CKDTreeMap<V> snapshotCKD = snapshot();
+      private Node<V> nextNode = snapshotCKD.RDCSS_READ_ROOT();
+
       @Override
       public boolean hasNext() {
-        return false;
+        return nextNode != null;
       }
 
       @Override
       public V next() {
-        return null;
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+
+        V key = null;
+
+        // since the ckd is not read only.
+        if (nextNode.GCAS_READ_LEFT_CHILD(snapshotCKD) != null) {
+          // should do a cas here.
+          nextNode = nextNode.GCAS_READ_LEFT_CHILD(snapshotCKD);
+        }
+
+        return key;
       }
     };
 
     return it;
-  }
-
-  public Iterator<V> readOnlyIterator() {
-    if (nonReadOnly()) {
-      readOnlySnapshot().readOnlyIterator();
-    }
-
-    Iterator<V> readOnlyIt = new Iterator<V>() {
-      @Override
-      public boolean hasNext() {
-        return false;
-      }
-
-      @Override
-      public V next() {
-        return null;
-      }
-    };
-
-    return readOnlyIt;
   }
 
   public V get(Object key) {

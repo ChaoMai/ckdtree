@@ -10,7 +10,7 @@ import org.junit.Test;
 public class CKDTreeMapTest {
   int dimensionSteps = 1;
   int sampleSteps = 100000;
-  int threadsSteps = 1;
+  int threadsSteps = 10;
   int rounds = 4;
   double delta = 0.001;
   boolean isVerbose = true;
