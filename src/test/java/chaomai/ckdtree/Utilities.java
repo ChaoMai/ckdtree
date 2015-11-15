@@ -5,7 +5,7 @@ import java.util.Random;
 /**
  * Created by chaomai on 11/5/15.
  */
-class Utilties {
+class Utilities {
   static double[] generateRandomArray(int dimension) {
     double[] array = new double[dimension];
     for (int i = 0; i < dimension; ++i) {

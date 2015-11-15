@@ -83,7 +83,7 @@ public class CKDTreeMapTest {
 
   private void addOneDimensionKeys(int samples) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
 
     addKeysToCKD(k, ckd);
 
@@ -94,8 +94,8 @@ public class CKDTreeMapTest {
 
   private void addOneDimensionDuplicateKeys(int samples) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
-    int duplicateCount = Utilties.makeDuplicateKeys(k);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
+    int duplicateCount = Utilities.makeDuplicateKeys(k);
 
     addKeysToCKD(k, ckd);
 
@@ -135,7 +135,7 @@ public class CKDTreeMapTest {
 
   private void addMultipleDimensionKeys2(int samples, int dimension) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     addKeysToCKD(k, ckd);
 
@@ -146,8 +146,8 @@ public class CKDTreeMapTest {
 
   private void addMultipleDimensionDuplicateKeys(int samples, int dimension) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
-    int duplicateCount = Utilties.makeDuplicateKeys(k);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+    int duplicateCount = Utilities.makeDuplicateKeys(k);
 
     addKeysToCKD(k, ckd);
 
@@ -265,7 +265,7 @@ public class CKDTreeMapTest {
 
   private void multithreadAddOneDimensionKeys(int samples, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -281,8 +281,8 @@ public class CKDTreeMapTest {
 
   private void multithreadAddOneDimensionDuplicateKeys(int samples, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
-    int duplicateCount = Utilties.makeDuplicateKeys(k);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
+    int duplicateCount = Utilities.makeDuplicateKeys(k);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -298,7 +298,7 @@ public class CKDTreeMapTest {
 
   private void multithreadAddMultipleDimensionKeys(int samples, int dimension, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -315,8 +315,8 @@ public class CKDTreeMapTest {
   private void multithreadAddMultipleDimensionDuplicateKeys(int samples, int dimension,
                                                             int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
-    int duplicateCount = Utilties.makeDuplicateKeys(k);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+    int duplicateCount = Utilities.makeDuplicateKeys(k);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -410,7 +410,7 @@ public class CKDTreeMapTest {
 
   private void deleteOneDimensionKeys(int samples) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
 
     if (isVerbose) {
       System.out.println("adding");
@@ -429,7 +429,7 @@ public class CKDTreeMapTest {
 
   private void deleteMultipleDimensionKeys(int samples, int dimension) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     if (isVerbose) {
       System.out.println("adding");
@@ -460,7 +460,7 @@ public class CKDTreeMapTest {
 
   private void multithreadDeleteOneDimensionKeys(int samples, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    double[][] k = Utilties.generateRandomArrays(samples, 1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -487,7 +487,7 @@ public class CKDTreeMapTest {
 
   private void multithreadDeleteMultipleDimensionKeys(int samples, int dimension, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -563,7 +563,7 @@ public class CKDTreeMapTest {
 
     CKDTreeMap<Integer> snapshot = ckd.snapshot();
 
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     addKeysToCKD(k, ckd);
 
@@ -586,8 +586,8 @@ public class CKDTreeMapTest {
     int samples = 10;
     int dimension = 1;
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k1 = Utilties.generateRandomArrays(samples, dimension);
-    double[][] k2 = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k1 = Utilities.generateRandomArrays(samples, dimension);
+    double[][] k2 = Utilities.generateRandomArrays(samples, dimension);
 
     addKeysToCKD(k1, ckd);
 
@@ -650,7 +650,7 @@ public class CKDTreeMapTest {
     int threads = 4;
 
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
     Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
@@ -677,7 +677,24 @@ public class CKDTreeMapTest {
 
   @Test
   public void testIterator() throws Exception {
-    simpleIteration();
-    randomIteration();
+    //    simpleIteration();
+    //    randomIteration();
+    add();
+  }
+
+  private void add() {
+    int dimension = 2;
+    int samples = 20000;
+    int threads = 20;
+
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+
+    addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
   }
 }
