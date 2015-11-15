@@ -331,6 +331,8 @@ public class CKDTreeMap<V> implements Iterable<V> {
     return keyEqual(sr.l.key, key);
   }
 
+  // since concurrent operations change the structure of the tree and increase the complexity of iteration,
+  // the iterator is readonly.
   @Override
   public Iterator<V> iterator() {
     Iterator<V> it = new Iterator<V>() {
@@ -572,7 +574,22 @@ public class CKDTreeMap<V> implements Iterable<V> {
   }
 
   public CKDTreeMap<V> readOnlySnapshot() {
-    return null;
+    if (isReadOnly()) {
+      return this;
+    }
+
+    while (true) {
+      InternalNode<V> r = RDCSS_READ_ROOT();
+      Node<V> ol = r.GCAS_READ_LEFT_CHILD(this);
+
+      InternalNode<V> nr = r.copyRootToGen(new Gen(), this);
+
+      if (RDCSS_ROOT(r, ol, nr)) {
+        return new CKDTreeMap<>(r, true, this.dimension);
+      } else {
+        continue;
+      }
+    }
   }
 
   @Override
