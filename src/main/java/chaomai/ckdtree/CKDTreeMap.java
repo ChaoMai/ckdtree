@@ -334,14 +334,17 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
   //   the iterator is readonly.
   @Override
   public Iterator<Map.Entry<double[], V>> iterator() {
-    Iterator<Map.Entry<double[], V>> it = new Iterator<Map.Entry<double[], V>>() {
-      Stack<Node<V>> parents = new Stack<>();
-      private CKDTreeMap<V> readOnlySnapshotCKD = readOnlySnapshot();
-      private Node<V> nextNode = readOnlySnapshotCKD.RDCSS_READ_ROOT();
+    CKDTreeMap<V> readOnlySnapshotCKD = readOnlySnapshot();
+    Node<V> nextNode = readOnlySnapshotCKD.RDCSS_READ_ROOT();
+
+    Stack<Node<V>> parents = new Stack<>();
+    parents.push(readOnlySnapshotCKD.RDCSS_READ_ROOT());
+
+    return new Iterator<Map.Entry<double[], V>>() {
 
       @Override
       public boolean hasNext() {
-        return nextNode != null;
+        return !parents.isEmpty();
       }
 
       @Override
@@ -353,30 +356,49 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
         V key;
 
         // since the ckd now is readonly, just directly access two child fields.
-        parents.push(readOnlySnapshotCKD.RDCSS_READ_ROOT().left);
         Node<V> cur;
 
         while (!parents.isEmpty()) {
           cur = parents.pop();
 
-          if (cur.left != null) {
-            parents.push(cur.left);
-          }
-
-          if (cur.right != null) {
-            parents.push(cur.right);
-          }
-
           if (cur instanceof Leaf) {
-            return new AbstractMap.SimpleEntry<>(cur.key, (V) ((Leaf) cur).value);
+            if (!Double.isInfinite(cur.key[0])) {
+              return entry((Leaf<V>) cur);
+            }
+          } else {
+            if (cur.left != null) {
+              parents.push(cur.left);
+            }
+
+            if (cur.right != null) {
+              parents.push(cur.right);
+            }
           }
         }
 
         throw new RuntimeException("Should not happen");
       }
-    };
 
-    return it;
+      private Map.Entry<double[], V> entry(Leaf<V> cur) {
+        return new Map.Entry<double[], V>() {
+          @Override
+          public double[] getKey() {
+            return cur.key;
+          }
+
+          @Override
+          public V getValue() {
+            return cur.value;
+          }
+
+          // the value of cur is final
+          @Override
+          public V setValue(V v) {
+            return null;
+          }
+        };
+      }
+    };
   }
 
   public V get(Object key) {

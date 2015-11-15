@@ -3,6 +3,9 @@ package chaomai.ckdtree;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Map;
+
 /**
  * Created by chaomai on 11/3/15.
  */
@@ -604,5 +607,60 @@ public class CKDTreeMapTest {
   public void testSnapshot() throws Exception {
     snapshotOnEmptyCKD();
     snapshotOnOneDimensionCKD();
+  }
+
+  private void simpleIteration() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(3);
+    // at some point, the key of newInternal would equal to its parent's key.
+    double[][] k = {{5.305068244152987, 5.084449022627336, 4.155634301794545},
+                    {4.658607614580709, 1.112285238547236, 7.6704533893483875},
+                    {3.135000004662376, 4.737773994443383, 3.8336349759006993},
+                    {1.0351259060545581, 4.21039722994082, 2.4693577126537414},
+                    {5.877263378165557, 2.2656014079486053, 0.358466039752825}};
+
+    addKeysToCKD(k, ckd);
+
+    checkKeysInCKD(k, ckd, true);
+
+    Assert.assertEquals(k.length, ckd.size());
+
+    for (Map.Entry<double[], Integer> l : ckd) {
+      System.out.println(String.format("(%d)", l.getValue()));
+    }
+  }
+
+  private void iteration() {
+    int dimension = 10;
+    int samples = 500;
+    int threads = 4;
+
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilties.generateRandomArrays(samples, dimension);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+
+    addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
+
+    checkKeysInCKD(k, ckd, true);
+
+    Assert.assertEquals(samples, ckd.size());
+
+    ArrayList<Map.Entry<double[], Integer>> list = new ArrayList<>();
+
+    for (Map.Entry<double[], Integer> l : ckd) {
+      System.out.println(String.format("(%d)", l.getValue()));
+      list.add(l);
+    }
+
+    Assert.assertEquals(samples, list.size());
+  }
+
+  @Test
+  public void testIterator() throws Exception {
+    simpleIteration();
+    iteration();
   }
 }
