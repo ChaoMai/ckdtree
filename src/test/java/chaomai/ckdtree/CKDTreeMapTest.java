@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class CKDTreeMapTest {
   int dimensionSteps = 1;
-  int sampleSteps = 100000;
+  int sampleSteps = 20000;
   int threadsSteps = 10;
   int rounds = 5;
   double delta = 0.001;
@@ -25,7 +25,7 @@ public class CKDTreeMapTest {
 
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.key[0], delta);
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.left.key[0], delta);
-    Assert.assertEquals(null, root.right);
+    Assert.assertEquals(Double.POSITIVE_INFINITY, root.right.key[0], delta);
   }
 
   private void searchDummy() {
@@ -330,6 +330,31 @@ public class CKDTreeMapTest {
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
+  private void multithreadAddHighContention() {
+    int dimension = 2;
+    int samples = 20000;
+    int threads = 40;
+
+    for (int i = 0; i < rounds; ++i) {
+      if (isVerbose) {
+        System.out.println(String.format("\nHigh Contention round %d", i));
+      }
+
+      CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+      double[][] k = Utilities.generateRandomArrays(samples, dimension);
+
+      Thread[] ts = new Thread[threads];
+      int workPerThread = samples / threads;
+
+      addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+      startThreads(ts);
+
+      checkKeysInCKD(k, ckd, true);
+      Assert.assertEquals(samples, ckd.size());
+    }
+  }
+
   @Test
   public void testMultithreadAdd() throws Exception {
     for (int i = 1; i <= rounds; ++i) {
@@ -367,6 +392,15 @@ public class CKDTreeMapTest {
       }
       multithreadAddMultipleDimensionDuplicateKeys(samples, dimension, threads);
     }
+
+    if (isVerbose) {
+      System.out.println("\nadd Special Key Sequences");
+    }
+
+    if (isVerbose) {
+      System.out.println("\n High Contention Case");
+    }
+    multithreadAddHighContention();
   }
 
   private void deleteKeysFromCKD(double[][] k, CKDTreeMap ckd) {
@@ -597,6 +631,7 @@ public class CKDTreeMapTest {
 
     // check snapshot
     checkKeysInCKD(k1, snapshot, true);
+    Assert.assertEquals(samples, snapshot.size());
 
     // check ckd
     checkKeysInCKD(k1, ckd, true);
@@ -677,31 +712,7 @@ public class CKDTreeMapTest {
 
   @Test
   public void testIterator() throws Exception {
-    //    simpleIteration();
-    //    randomIteration();
-    add();
-  }
-
-  private void add() {
-    int dimension = 2;
-    int samples = 200000;
-    int threads = 20;
-
-    for (int i = 0; i < 1000; ++i) {
-      System.out.println(String.format("round %d", i));
-
-      CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-      double[][] k = Utilities.generateRandomArrays(samples, dimension);
-
-      Thread[] ts = new Thread[threads];
-      int workPerThread = samples / threads;
-
-      addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-      startThreads(ts);
-
-      checkKeysInCKD(k, ckd, true);
-      Assert.assertEquals(samples, ckd.size());
-    }
+    simpleIteration();
+    randomIteration();
   }
 }

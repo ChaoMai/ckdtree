@@ -108,14 +108,6 @@ abstract class Node<V> {
     }
   }
 
-  //  protected boolean GCAS(Node<V> old, Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
-  //    if (direction == Direction.LEFT) {
-  //      return CAS_LEFT(old, n);
-  //    } else {
-  //      return CAS_RIGHT(old, n);
-  //    }
-  //  }
-
   protected boolean GCAS(Node<V> old, Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
     n.WRITE_PREV(old);
 
