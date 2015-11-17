@@ -684,17 +684,24 @@ public class CKDTreeMapTest {
 
   private void add() {
     int dimension = 2;
-    int samples = 20000;
+    int samples = 200000;
     int threads = 20;
 
-    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
-    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+    for (int i = 0; i < 1000; ++i) {
+      System.out.println(String.format("round %d", i));
 
-    Thread[] ts = new Thread[threads];
-    int workPerThread = samples / threads;
+      CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+      double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
+      Thread[] ts = new Thread[threads];
+      int workPerThread = samples / threads;
 
-    startThreads(ts);
+      addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+      startThreads(ts);
+
+      checkKeysInCKD(k, ckd, true);
+      Assert.assertEquals(samples, ckd.size());
+    }
   }
 }

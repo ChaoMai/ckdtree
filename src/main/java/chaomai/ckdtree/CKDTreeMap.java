@@ -34,7 +34,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    this.root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
+    this.root = new InternalNode<>(key, new Leaf<>(key), new Leaf<>(key), 0, new Gen());
   }
 
   public CKDTreeMap(int dimension) {
@@ -111,10 +111,6 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     return readOnly;
   }
 
-  boolean nonReadOnly() {
-    return !readOnly;
-  }
-
   private boolean CAS_ROOT(Object old, Object n) {
     if (isReadOnly()) {
       throw new IllegalStateException("Attempted to modify a read-only snapshot");
@@ -171,8 +167,11 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
 
         // only perform GCAS on InternalNode
         if (left instanceof InternalNode) {
+          // use startGen instead of root's gen, since the gen of root may change while perform
+          // searching. if the gen of root is used, searchKey will generate a branch at some internal
+          // node after the root's gen is changed.
           if (left.gen != startGen) {
-            // do GCAS, change the left into a new with new gen.
+            // do GCAS, change the left into a new one with new gen.
             if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this,
                          Direction.LEFT)) {
               // retry on cur
@@ -190,7 +189,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
         Node<V> right = cur.GCAS_READ_RIGHT_CHILD(this);
 
         if (right instanceof InternalNode) {
-          if (((InternalNode) right).gen != startGen) {
+          if (right.gen != startGen) {
             if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
                          Direction.RIGHT)) {
               continue;
@@ -273,18 +272,19 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
         this.size.getAndIncrement();
-
-        // unflag
-        info.p.CAS_UPDATE(iu, new Update());
       }
-    } else {
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
+
+    } else if (info.l == info.p.GCAS_READ_RIGHT_CHILD(this)) {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
-
-        // unflag
-        info.p.CAS_UPDATE(iu, new Update());
       }
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
     }
   }
 
@@ -434,10 +434,10 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     // dchild2
     if (info.gp.GCAS(info.p, newSibling, this, direction)) {
       this.size.getAndDecrement();
-
-      // unflag
-      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
     }
+
+    // unflag
+    info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
   }
 
   // sibling is leaf
@@ -470,10 +470,11 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       // dchild1
       if (info.gp.GCAS(info.p, ns, this, direction)) {
         this.size.getAndDecrement();
-
-        // unflag
-        info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
       }
+
+      // unflag
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+
     } else {
       Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
