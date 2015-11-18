@@ -575,6 +575,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     return delete(key);
   }
 
+  // todo: fix this, size in snapshot won't work.
   public int size() {
     return this.size.get();
   }
