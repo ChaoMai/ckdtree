@@ -64,7 +64,6 @@ abstract class Node<V> {
         return null;
       } else {
         Node<V> prev = n.prev;
-        InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
 
         if (prev == null) {
           return n;
@@ -88,6 +87,8 @@ abstract class Node<V> {
             }
           }
         } else if (prev instanceof InternalNode || prev instanceof Leaf) {
+          InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
+
           if (root.gen == this.gen && !ckd.isReadOnly()) {
             if (n.CAS_PREV(prev, null)) {
               return n;

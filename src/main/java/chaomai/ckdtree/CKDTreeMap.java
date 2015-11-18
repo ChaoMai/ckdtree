@@ -145,12 +145,12 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
   private Object searchKey(double[] key, Gen startGen) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
-    InternalNode<V> p = this.RDCSS_READ_ROOT();
-    Update pupdate = p.GET_UPDATE();
+    InternalNode<V> p = null;
+    Update pupdate = null;
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = p.GCAS_READ_LEFT_CHILD(this);
+    Node<V> cur = this.RDCSS_READ_ROOT();
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -171,13 +171,9 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
           // node after the root's gen is changed.
           if (left.gen != startGen) {
             // do GCAS, change the left into a new one with new gen.
-            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this,
-                         Direction.LEFT)) {
-              // retry on cur
-              continue;
-            } else {
-              return SearchRes.RESTART;
-            }
+            cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this, Direction.LEFT);
+            // retry
+            return SearchRes.RESTART;
           }
         }
 
@@ -189,12 +185,9 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
 
         if (right instanceof InternalNode) {
           if (right.gen != startGen) {
-            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
-                         Direction.RIGHT)) {
-              continue;
-            } else {
-              return SearchRes.RESTART;
-            }
+            cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
+                     Direction.RIGHT);
+            return SearchRes.RESTART;
           }
         }
 
@@ -587,11 +580,6 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
   }
 
   // 1.
-  // to keep invariant from root, both root and its left child must be updated.
-  // otherwise, when iteration reaches the left child of root and decide to change its left child to new,
-  // the gcas operation will be bound to fail. because the gen of the left child of root is old.
-  //
-  // 2.
   // it's necessary to make sure root and its left child not changed when updating the root to new gen.
   // otherwise, insertion may lost at some scenarios.
   public CKDTreeMap<V> snapshot() {
