@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 @SuppressWarnings({"unused"})
 public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
-  //public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
@@ -34,7 +33,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    this.root = new InternalNode<>(key, new Leaf<>(key), null, 0, new Gen());
+    this.root = new InternalNode<>(key, new Leaf<>(key), new Leaf<>(key), 0, new Gen());
   }
 
   public CKDTreeMap(int dimension) {
@@ -111,10 +110,6 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     return readOnly;
   }
 
-  boolean nonReadOnly() {
-    return !readOnly;
-  }
-
   private boolean CAS_ROOT(Object old, Object n) {
     if (isReadOnly()) {
       throw new IllegalStateException("Attempted to modify a read-only snapshot");
@@ -150,12 +145,12 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
   private Object searchKey(double[] key, Gen startGen) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
-    InternalNode<V> p = this.RDCSS_READ_ROOT();
-    Update pupdate = p.GET_UPDATE();
+    InternalNode<V> p = null;
+    Update pupdate = null;
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = p.GCAS_READ_LEFT_CHILD(this);
+    Node<V> cur = this.RDCSS_READ_ROOT();
 
     while (cur instanceof InternalNode) {
       // continue searching
@@ -171,15 +166,14 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
 
         // only perform GCAS on InternalNode
         if (left instanceof InternalNode) {
+          // use startGen instead of root's gen, since the gen of root may change while perform
+          // searching. if the gen of root is used, searchKey will generate a branch at some internal
+          // node after the root's gen is changed.
           if (left.gen != startGen) {
-            // do GCAS, change the left into a new with new gen.
-            if (cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this,
-                         Direction.LEFT)) {
-              // retry on cur
-              continue;
-            } else {
-              return SearchRes.RESTART;
-            }
+            // do GCAS, change the left into a new one with new gen.
+            cur.GCAS(left, ((InternalNode<V>) left).renewed(startGen, this), this, Direction.LEFT);
+            // retry
+            return SearchRes.RESTART;
           }
         }
 
@@ -190,13 +184,10 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
         Node<V> right = cur.GCAS_READ_RIGHT_CHILD(this);
 
         if (right instanceof InternalNode) {
-          if (((InternalNode) right).gen != startGen) {
-            if (cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
-                         Direction.RIGHT)) {
-              continue;
-            } else {
-              return SearchRes.RESTART;
-            }
+          if (right.gen != startGen) {
+            cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
+                     Direction.RIGHT);
+            return SearchRes.RESTART;
           }
         }
 
@@ -273,18 +264,19 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
         this.size.getAndIncrement();
-
-        // unflag
-        info.p.CAS_UPDATE(iu, new Update());
       }
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
+
     } else {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
-
-        // unflag
-        info.p.CAS_UPDATE(iu, new Update());
       }
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
     }
   }
 
@@ -434,10 +426,10 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     // dchild2
     if (info.gp.GCAS(info.p, newSibling, this, direction)) {
       this.size.getAndDecrement();
-
-      // unflag
-      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
     }
+
+    // unflag
+    info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
   }
 
   // sibling is leaf
@@ -464,17 +456,19 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
         direction = Direction.LEFT;
       } else {
+        // since the right child may also be compared, so the root must hold a valid reference to a right child.
         direction = Direction.RIGHT;
       }
 
       // dchild1
       if (info.gp.GCAS(info.p, ns, this, direction)) {
         this.size.getAndDecrement();
-
-        // unflag
-        info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
       }
-    } else {
+
+      // unflag
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+
+    } else if (sibling instanceof InternalNode) {
       Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
       if (supdate.state == State.CLEAN) {
@@ -581,16 +575,12 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     return delete(key);
   }
 
+  // todo: fix this, size in snapshot won't work.
   public int size() {
     return this.size.get();
   }
 
   // 1.
-  // to keep invariant from root, both root and its left child must be updated.
-  // otherwise, when iteration reaches the left child of root and decide to change its left child to new,
-  // the gcas operation will be bound to fail. because the gen of the left child of root is old.
-  //
-  // 2.
   // it's necessary to make sure root and its left child not changed when updating the root to new gen.
   // otherwise, insertion may lost at some scenarios.
   public CKDTreeMap<V> snapshot() {

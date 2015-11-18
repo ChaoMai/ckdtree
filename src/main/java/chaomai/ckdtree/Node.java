@@ -59,93 +59,93 @@ abstract class Node<V> {
   }
 
   private Node<V> GCAS_COMPLETE(Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
-    if (n == null) {
-      return null;
-    } else {
-      Node prev = n.prev;
-      InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
+    while (true) {
+      if (n == null) {
+        return null;
+      } else {
+        Node<V> prev = n.prev;
 
-      if (prev == null) {
-        return n;
-      }
-
-      if (prev instanceof FailedNode) {
-        FailedNode<V> fn = (FailedNode<V>) prev;
-        if (direction == Direction.LEFT) {
-          if (CAS_LEFT(n, fn.prev)) {
-            return fn.prev;
-          } else {
-            return GCAS_COMPLETE(n, ckd, direction);
-          }
-        } else {
-          if (CAS_RIGHT(n, fn.prev)) {
-            return fn.prev;
-          } else {
-            return GCAS_COMPLETE(n, ckd, direction);
-          }
+        if (prev == null) {
+          return n;
         }
-      } else if (prev instanceof InternalNode || prev instanceof Leaf) {
-        if (root.gen == this.gen && ckd.nonReadOnly()) {
-          if (n.CAS_PREV(prev, null)) {
-            return n;
+
+        if (prev instanceof FailedNode) {
+          FailedNode<V> fn = (FailedNode<V>) prev;
+          if (direction == Direction.LEFT) {
+            if (CAS_LEFT(n, fn.prev)) {
+              return fn.prev;
+            } else {
+              n = this.left;
+              continue;
+            }
           } else {
-            return GCAS_COMPLETE(n, ckd, direction);
+            if (CAS_RIGHT(n, fn.prev)) {
+              return fn.prev;
+            } else {
+              n = this.right;
+              continue;
+            }
           }
-        } else {
-          n.CAS_PREV(prev, new FailedNode<>(prev));
-          return GCAS_COMPLETE(n, ckd, direction);
+        } else if (prev instanceof InternalNode || prev instanceof Leaf) {
+          InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
+
+          if (root.gen == this.gen && !ckd.isReadOnly()) {
+            if (n.CAS_PREV(prev, null)) {
+              return n;
+            } else {
+              continue;
+            }
+          } else {
+            n.CAS_PREV(prev, new FailedNode<>(prev));
+
+            if (direction == Direction.LEFT) {
+              return GCAS_COMPLETE(this.left, ckd, direction);
+            } else {
+              return GCAS_COMPLETE(this.right, ckd, direction);
+            }
+          }
         }
       }
     }
-    throw new RuntimeException("Should not happen");
   }
 
   protected boolean GCAS(Node<V> old, Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
     n.WRITE_PREV(old);
 
-    switch (direction) {
-      case LEFT: {
-        if (CAS_LEFT(old, n)) {
-          GCAS_COMPLETE(n, ckd, direction);
-          return n.prev == null;
-        } else {
-          return false;
-        }
+    if (direction == Direction.LEFT) {
+      if (CAS_LEFT(old, n)) {
+        GCAS_COMPLETE(n, ckd, direction);
+        return n.prev == null;
+      } else {
+        return false;
       }
-      case RIGHT: {
-        n.WRITE_PREV(old);
-        if (CAS_RIGHT(old, n)) {
-          GCAS_COMPLETE(n, ckd, direction);
-          return n.prev == null;
-        } else {
-          return false;
-        }
-      }
-      default: {
-        throw new RuntimeException("Should not happen");
+    } else {
+      if (CAS_RIGHT(old, n)) {
+        GCAS_COMPLETE(n, ckd, direction);
+        return n.prev == null;
+      } else {
+        return false;
       }
     }
   }
 
   protected Node<V> GCAS_READ_LEFT_CHILD(CKDTreeMap<V> ckd) {
-    Node<V> left = this.left;
-    Node<V> prev = left.prev;
+    Node<V> prev = this.left.prev;
 
     if (prev == null) {
-      return left;
+      return this.left;
     } else {
-      return GCAS_COMPLETE(left, ckd, Direction.LEFT);
+      return GCAS_COMPLETE(this.left, ckd, Direction.LEFT);
     }
   }
 
   protected Node<V> GCAS_READ_RIGHT_CHILD(CKDTreeMap<V> ckd) {
-    Node<V> right = this.right;
-    Node<V> prev = right.prev;
+    Node<V> prev = this.right.prev;
 
     if (prev == null) {
-      return right;
+      return this.right;
     } else {
-      return GCAS_COMPLETE(right, ckd, Direction.RIGHT);
+      return GCAS_COMPLETE(this.right, ckd, Direction.RIGHT);
     }
   }
 

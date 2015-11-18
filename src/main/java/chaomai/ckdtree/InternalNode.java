@@ -29,25 +29,10 @@ class InternalNode<V> extends Node<V> {
   }
 
   InternalNode<V> copyRootToGen(Gen newGen, CKDTreeMap<V> ckd) {
-    // copy root and the left child of leaf
-    InternalNode<V> nr =
-        new InternalNode<>(this.key, null, null, new Update(), this.skippedDepth, newGen);
     Node<V> ol = this.GCAS_READ_LEFT_CHILD(ckd);
-
-    Node<V> nl;
-
-    if (ol instanceof Leaf) {
-      nl = new Leaf<>(ol.key, (V) ((Leaf) ol).value);
-    } else if (ol instanceof InternalNode) {
-      Node<V> left = ol.GCAS_READ_LEFT_CHILD(ckd);
-      Node<V> right = ol.GCAS_READ_RIGHT_CHILD(ckd);
-      nl = new InternalNode<>(ol.key, left, right, new Update(), ((InternalNode) ol).skippedDepth,
-                              newGen);
-    } else {
-      throw new IllegalStateException("Left of root is neither Leaf or InternalNode");
-    }
-
-    nr.WRITE_LEFT(nl);
+    Node<V> or = this.GCAS_READ_RIGHT_CHILD(ckd);
+    InternalNode<V> nr =
+        new InternalNode<>(this.key, ol, or, new Update(), this.skippedDepth, newGen);
 
     return nr;
   }
