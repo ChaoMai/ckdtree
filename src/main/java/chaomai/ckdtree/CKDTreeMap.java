@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 @SuppressWarnings({"unused"})
 public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
-  //public class CKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
@@ -277,7 +276,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       // unflag
       info.p.CAS_UPDATE(iu, new Update());
 
-    } else if (info.l == info.p.GCAS_READ_RIGHT_CHILD(this)) {
+    } else {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
@@ -464,6 +463,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
         direction = Direction.LEFT;
       } else {
+        // since the right child may also be compared, so the root must hold a valid reference to a right child.
         direction = Direction.RIGHT;
       }
 
@@ -475,7 +475,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
       // unflag
       info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
 
-    } else {
+    } else if (sibling instanceof InternalNode) {
       Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
       if (supdate.state == State.CLEAN) {
