@@ -1,7 +1,5 @@
 package chaomai.ckdtree;
 
-import chaomai.ckdtree.snapshot1.CKDTreeMap;
-
 import java.util.Iterator;
 import java.util.Map;
 
@@ -25,9 +23,9 @@ public interface ICKDTreeMap<V> extends Iterable<Map.Entry<double[], V>> {
 
   int size();
 
-  CKDTreeMap<V> snapshot();
+  ICKDTreeMap<V> snapshot();
 
-  CKDTreeMap<V> readOnlySnapshot();
+  ICKDTreeMap<V> readOnlySnapshot();
 
   @Override
   String toString();

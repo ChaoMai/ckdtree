@@ -1,5 +1,7 @@
 package chaomai.ckdtree.snapshot1;
 
+import chaomai.ckdtree.ICKDTreeMap;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -9,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> implements chaomai.ckdtree.ICKDTreeMap<V> {
+public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
