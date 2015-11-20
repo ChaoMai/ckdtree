@@ -1,4 +1,4 @@
-package chaomai.ckdtree;
+package chaomai.ckdtree.snapshot1;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
+public class CKDTreeMap<V> implements chaomai.ckdtree.ICKDTreeMap<V> {
   private final int dimension;
   private final boolean readOnly;
   private final AtomicInteger size = new AtomicInteger();
@@ -309,14 +309,17 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     }
   }
 
+  @Override
   public boolean add(double[] key, V value) {
     return insert(key, value);
   }
 
+  @Override
   public void clear() {
 
   }
 
+  @Override
   public boolean contains(double[] key) {
     SearchRes sr = search(key);
     return keyEqual(sr.l.key, key);
@@ -393,6 +396,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     };
   }
 
+  @Override
   public V get(Object key) {
     return null;
   }
@@ -571,11 +575,13 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     }
   }
 
+  @Override
   public boolean remove(double[] key) {
     return delete(key);
   }
 
   // todo: fix this, size in snapshot won't work.
+  @Override
   public int size() {
     return this.size.get();
   }
@@ -583,6 +589,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
   // 1.
   // it's necessary to make sure root and its left child not changed when updating the root to new gen.
   // otherwise, insertion may lost at some scenarios.
+  @Override
   public CKDTreeMap<V> snapshot() {
     while (true) {
       InternalNode<V> r = RDCSS_READ_ROOT();
@@ -599,6 +606,7 @@ public class CKDTreeMap<V> implements Iterable<Map.Entry<double[], V>> {
     }
   }
 
+  @Override
   public CKDTreeMap<V> readOnlySnapshot() {
     if (isReadOnly()) {
       return this;

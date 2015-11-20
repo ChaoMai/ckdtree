@@ -1,4 +1,4 @@
-package chaomai.ckdtree;
+package chaomai.ckdtree.snapshot1;
 
 import org.junit.Test;
 
