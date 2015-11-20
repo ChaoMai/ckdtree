@@ -8,6 +8,8 @@ import java.util.Map;
 /**
  * Created by chaomai on 11/20/15.
  */
+
+// todo: optimise the update
 @SuppressWarnings({"unused"})
 public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   @Override
@@ -45,6 +47,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return 0;
   }
 
+  // todo: implement snapshot method mentioned in http://www.cs.utoronto.ca/~tabrown/ksts/StaticDictionary5.java
   @Override
   public CKDTreeMap<V> snapshot() {
     return null;
