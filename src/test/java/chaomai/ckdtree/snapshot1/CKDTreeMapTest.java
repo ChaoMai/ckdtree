@@ -1,5 +1,6 @@
 package chaomai.ckdtree.snapshot1;
 
+import chaomai.ckdtree.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -822,17 +823,9 @@ public class CKDTreeMapTest {
     }
   }
 
-  private String KeyToString(double[] key) {
-    String ret = new String();
-    for (double d : key) {
-      ret += d + ",";
-    }
-
-    return ret;
-  }
-
   private void printEntry(Map.Entry<double[], Integer> l) {
-    System.out.println(String.format("<[%s], %d>", KeyToString(l.getKey()), l.getValue()));
+    System.out.println(
+        String.format("<[%s], %d>", Utilities.KeyToString(l.getKey()), l.getValue()));
   }
 
   private void simpleKeysIteration() {
