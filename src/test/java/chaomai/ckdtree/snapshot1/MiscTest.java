@@ -4,7 +4,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -253,5 +258,35 @@ public class MiscTest {
 
     Assert.assertEquals(a.a, 1);
     //    a.a = 3;
+  }
+
+  private void stop(ExecutorService executor) {
+    try {
+      executor.shutdown();
+      executor.awaitTermination(60, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      System.err.println("termination interrupted");
+    } finally {
+      if (!executor.isTerminated()) {
+        System.err.println("killing non-finished tasks");
+      }
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testExecutor() {
+    AtomicInteger atomicInt = new AtomicInteger(0);
+
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+
+    IntStream.range(0, 1000).forEach(i -> {
+      Runnable task = () -> atomicInt.updateAndGet(n -> n + 1);
+      executor.submit(task);
+    });
+
+    stop(executor);
+
+    System.out.println(atomicInt.get());
   }
 }
