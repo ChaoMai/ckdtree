@@ -1,6 +1,6 @@
 package chaomai.ckdtree.snapshot2;
 
-import chaomai.ckdtree.snapshot1.Utilities;
+import chaomai.ckdtree.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -38,7 +38,6 @@ public class CKDTreeMapTest {
   public void testSearch() throws Exception {
     searchDummy();
   }
-
 
   private void addKeysToCKD(double[][] k, CKDTreeMap ckd) {
     for (int i = 0; i < k.length; i++) {
@@ -175,7 +174,6 @@ public class CKDTreeMapTest {
 
     Assert.assertEquals(k.length, ckd.size());
   }
-
 
   @Test
   public void testSingleThreadAdd() throws Exception {

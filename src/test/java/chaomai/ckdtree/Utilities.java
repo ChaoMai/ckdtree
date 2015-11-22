@@ -1,4 +1,4 @@
-package chaomai.ckdtree.snapshot1;
+package chaomai.ckdtree;
 
 import java.util.Random;
 
@@ -22,22 +22,13 @@ public class Utilities {
     return array;
   }
 
-  public static void printArray(double[] array) {
-    String str = "[";
-
-    for (double d : array) {
-      str += d + ", ";
+  public static String KeyToString(double[] key) {
+    String ret = new String();
+    for (double d : key) {
+      ret += d + ",";
     }
-    str = str.substring(0, str.length() - 2);
-    str += "]";
 
-    System.out.println(str);
-  }
-
-  public static void printArray(double[][] array) {
-    for (double[] arr : array) {
-      printArray(arr);
-    }
+    return ret;
   }
 
   public static int makeDuplicateKeys(double[][] array) {
