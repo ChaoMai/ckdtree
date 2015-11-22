@@ -5,6 +5,7 @@ import chaomai.ckdtree.ICKDTreeMap;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by chaomai on 11/20/15.
@@ -14,6 +15,7 @@ import java.util.Map;
 public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   final InternalNode<V> root;
   private final int dimension;
+  private final AtomicInteger size = new AtomicInteger();
 
   public CKDTreeMap(int dimension) {
 
@@ -51,7 +53,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private Object searchKey(double[] key) {
+  SearchRes<V> search(double[] key) {
     InternalNode<V> gp = null;
     Update gpupdate = null;
     InternalNode<V> p = null;
@@ -80,21 +82,103 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return new SearchRes<>(gp, gpupdate, p, pupdate, l, depth);
   }
 
-  SearchRes<V> search(double[] key) {
-    while (true) {
-      Object res = searchKey(key);
+  private InternalNode<V> createSubTree(double[] k, V v, Leaf<V> l, int depth) {
+    int skip = 0;
+    int compareResult;
 
-      if (res == SearchRes.RESTART) {
+    while ((compareResult = keyCompare(k, l.key, depth++)) == 0) {
+      ++skip;
+    }
+
+    Leaf<V> left;
+    Leaf<V> right;
+    double[] maxKey;
+
+    if (compareResult < 0) {
+      maxKey = l.key;
+      left = new Leaf<>(k, v);
+      right = new Leaf<>(l.key, l.value);
+    } else {
+      maxKey = k;
+      left = new Leaf<>(l.key, l.value);
+      right = new Leaf<>(k, v);
+    }
+
+    return new InternalNode<>(maxKey, left, right, skip);
+  }
+
+  private void help(Update update) {
+    switch (update.state) {
+      case IFLAG: {
+        helpInsert(update);
+        break;
+      }
+      case DFLAG: {
+        break;
+      }
+      case MARK1: {
+        break;
+      }
+      case MARK2: {
+        break;
+      }
+    }
+  }
+
+  private void helpInsert(Update iu) {
+    InsertInfo<V> info = (InsertInfo<V>) iu.info;
+
+    if (info.l == info.p.left) {
+      // ichild
+      if (info.p.CAS_LEFT(info.l, info.newInternal)) {
+        this.size.getAndIncrement();
+      }
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
+    } else {
+      // ichild
+      if (info.p.CAS_RIGHT(info.l, info.newInternal)) {
+        this.size.getAndIncrement();
+      }
+
+      // unflag
+      info.p.CAS_UPDATE(iu, new Update());
+    }
+  }
+
+  private boolean insert(double[] key, V value) {
+    while (true) {
+      SearchRes<V> r = search(key);
+
+      if (keyEqual(r.l.key, key)) {
+        return false;
+      }
+
+      if (r.pupdate.state != State.CLEAN) {
+        help(r.pupdate);
         continue;
+      }
+
+      InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
+
+      // iflag
+      InsertInfo<V> info = new InsertInfo<>(r.p, newInternal, r.l);
+      Update iu = new Update(State.IFLAG, info);
+
+      if (r.p.CAS_UPDATE(r.pupdate, iu)) {
+        helpInsert(iu);
+        return true;
       } else {
-        return (SearchRes<V>) res;
+        Update update = r.p.GET_UPDATE();
+        help(update);
       }
     }
   }
 
   @Override
   public boolean add(double[] key, V value) {
-    return false;
+    return insert(key, value);
   }
 
   @Override
@@ -125,7 +209,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public int size() {
-    return 0;
+    return this.size.get();
   }
 
   // todo: implement snapshot method mentioned in http://www.cs.utoronto.ca/~tabrown/ksts/StaticDictionary5.java

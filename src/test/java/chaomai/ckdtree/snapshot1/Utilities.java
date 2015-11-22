@@ -5,8 +5,8 @@ import java.util.Random;
 /**
  * Created by chaomai on 11/5/15.
  */
-class Utilities {
-  static double[] generateRandomArray(int dimension) {
+public class Utilities {
+  public static double[] generateRandomArray(int dimension) {
     double[] array = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
       array[i] = Math.random() * 10;
@@ -14,7 +14,7 @@ class Utilities {
     return array;
   }
 
-  static double[][] generateRandomArrays(int samples, int dimension) {
+  public static double[][] generateRandomArrays(int samples, int dimension) {
     double[][] array = new double[samples][dimension];
     for (int i = 0; i < samples; ++i) {
       array[i] = generateRandomArray(dimension);
@@ -22,7 +22,7 @@ class Utilities {
     return array;
   }
 
-  static void printArray(double[] array) {
+  public static void printArray(double[] array) {
     String str = "[";
 
     for (double d : array) {
@@ -34,13 +34,13 @@ class Utilities {
     System.out.println(str);
   }
 
-  static void printArray(double[][] array) {
+  public static void printArray(double[][] array) {
     for (double[] arr : array) {
       printArray(arr);
     }
   }
 
-  static int makeDuplicateKeys(double[][] array) {
+  public static int makeDuplicateKeys(double[][] array) {
     Random rand = new Random();
     int min = 0;
     int max = array.length - 1;
