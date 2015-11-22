@@ -202,6 +202,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return null;
   }
 
+  // todo: finish this
   @Override
   public boolean remove(double[] key) {
     return false;
