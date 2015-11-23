@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings({"unused"})
 public class CKDTreeMap<V> implements ICKDTreeMap<V> {
-  final InternalNode<V> root;
+  final InternalNode root;
   private final int dimension;
   private final AtomicInteger size = new AtomicInteger();
 
@@ -26,7 +26,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    this.root = new InternalNode<>(key, new Leaf<>(key), new Leaf<>(key), 0);
+    this.root = new InternalNode(key, new Leaf<>(key), new Leaf<>(key), 0);
   }
 
   private boolean keyEqual(double[] k1, double[] k2) {
@@ -36,10 +36,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   private int keyCompare(double[] k1, double[] k2, int depth) {
     if (k1[0] == Double.POSITIVE_INFINITY && k2[0] == Double.POSITIVE_INFINITY) {
       return -1;
-    }
-
-    if (Arrays.equals(k1, k2)) {
-      return 0;
     }
 
     int axis = depth % this.dimension;
@@ -54,19 +50,19 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   SearchRes<V> search(double[] key) {
-    InternalNode<V> gp = null;
+    InternalNode gp = null;
     Update gpupdate = null;
-    InternalNode<V> p = null;
+    InternalNode p = null;
     Update pupdate = null;
     Leaf<V> l;
     int depth = 0;
 
-    Node<V> cur = this.root;
+    Node cur = this.root;
 
     while (cur instanceof InternalNode) {
       gp = p;
       gpupdate = pupdate;
-      p = (InternalNode<V>) cur;
+      p = (InternalNode) cur;
       pupdate = p.GET_UPDATE();
       depth += p.skippedDepth;
 
@@ -82,7 +78,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return new SearchRes<>(gp, gpupdate, p, pupdate, l, depth);
   }
 
-  private InternalNode<V> createSubTree(double[] k, V v, Leaf<V> l, int depth) {
+  private InternalNode createSubTree(double[] k, V v, Leaf<V> l, int depth) {
     int skip = 0;
     int compareResult;
 
@@ -104,7 +100,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       right = new Leaf<>(k, v);
     }
 
-    return new InternalNode<>(maxKey, left, right, skip);
+    return new InternalNode(maxKey, left, right, skip);
   }
 
   private void help(Update update) {
@@ -114,12 +110,15 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         break;
       }
       case DFLAG: {
+        helpDelete(update);
         break;
       }
       case MARK1: {
+        helpMarked1(update);
         break;
       }
       case MARK2: {
+        helpMarked2(update);
         break;
       }
     }
@@ -133,18 +132,15 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       if (info.p.CAS_LEFT(info.l, info.newInternal)) {
         this.size.getAndIncrement();
       }
-
-      // unflag
-      info.p.CAS_UPDATE(iu, new Update());
     } else {
       // ichild
       if (info.p.CAS_RIGHT(info.l, info.newInternal)) {
         this.size.getAndIncrement();
       }
-
-      // unflag
-      info.p.CAS_UPDATE(iu, new Update());
     }
+
+    // unflag
+    info.p.CAS_UPDATE(iu, new Update());
   }
 
   private boolean insert(double[] key, V value) {
@@ -160,7 +156,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         continue;
       }
 
-      InternalNode<V> newInternal = createSubTree(key, value, r.l, r.leafDepth);
+      InternalNode newInternal = createSubTree(key, value, r.l, r.leafDepth);
 
       // iflag
       InsertInfo<V> info = new InsertInfo<>(r.p, newInternal, r.l);
@@ -202,10 +198,158 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return null;
   }
 
-  // todo: finish this
+  // sibling is InternalNode
+  private void helpMarked2(Update m2u) {
+    DeleteInfo<V> info = (DeleteInfo<V>) m2u.info;
+
+    InternalNode sibling;
+
+    if (info.l == info.p.left) {
+      sibling = (InternalNode) info.p.right;
+    } else {
+      sibling = (InternalNode) info.p.left;
+    }
+
+    InternalNode newSibling = new InternalNode(sibling.key, sibling.left, sibling.right,
+                                               info.p.skippedDepth + sibling.skippedDepth +
+                                               1);
+
+    if (info.p == info.gp.left) {
+      // dchild2
+      if (info.gp.CAS_LEFT(info.p, newSibling)) {
+        this.size.getAndDecrement();
+      }
+    } else {
+      if (info.gp.CAS_RIGHT(info.p, newSibling)) {
+        this.size.getAndDecrement();
+      }
+    }
+
+    // unflag
+    info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+  }
+
+  // sibling is leaf
+  private void helpMarked1(Update m1u) {
+    DeleteInfo<V> info = (DeleteInfo<V>) m1u.info;
+
+    Node sibling;
+
+    if (info.l == info.p.left) {
+      sibling = info.p.right;
+    } else {
+      sibling = info.p.left;
+    }
+
+    if (sibling instanceof Leaf) {
+      Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
+
+      if (info.p == info.gp.left) {
+        // dchild1
+        if (info.gp.CAS_LEFT(info.p, ns)) {
+          this.size.getAndDecrement();
+        }
+      } else {
+        // dchild1
+        if (info.gp.CAS_RIGHT(info.p, ns)) {
+          this.size.getAndDecrement();
+        }
+      }
+
+      // unflag
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+
+    } else if (sibling instanceof InternalNode) {
+      Update supdate = ((InternalNode) sibling).GET_UPDATE();
+      Update m2u = new Update(State.MARK2, info);
+
+      if (supdate.state == State.CLEAN && ((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
+        helpMarked2(m2u);
+      } else {
+        help(supdate);
+      }
+    }
+  }
+
+  private boolean helpDelete(Update du) {
+    DeleteInfo<V> info = (DeleteInfo<V>) du.info;
+
+    // mark1
+    Update m1u = new Update(State.MARK1, info);
+    if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
+      Node sibling;
+
+      if (info.l == info.p.left) {
+        sibling = info.p.right;
+      } else {
+        sibling = info.p.left;
+      }
+
+      // check sibling
+      if (sibling instanceof Leaf) {
+        helpMarked1(m1u);
+        return true;
+      } else if (sibling instanceof InternalNode) {
+        Update supdate = ((InternalNode) sibling).GET_UPDATE();
+        Update m2u = new Update(State.MARK2, info);
+
+        if (supdate.state == State.CLEAN && ((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
+          helpMarked2(m2u);
+          return true;
+        } else {
+          help(supdate);
+          return false;
+        }
+      } else {
+        throw new RuntimeException("Should not happen");
+      }
+    } else {
+      Update update = info.p.GET_UPDATE();
+      help(update);
+
+      // backtrack cas
+      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+
+      return false;
+    }
+  }
+
+  boolean delete(double[] key) {
+    while (true) {
+      SearchRes<V> r = search(key);
+
+      if (!keyEqual(r.l.key, key)) {
+        return false;
+      }
+
+      if (r.gpupdate.state != State.CLEAN) {
+        help(r.gpupdate);
+        continue;
+      }
+
+      if (r.pupdate.state != State.CLEAN) {
+        help(r.pupdate);
+        continue;
+      }
+
+      // dflag
+      DeleteInfo<V> info = new DeleteInfo<>(r.gp, r.p, r.pupdate, r.l);
+      Update du = new Update(State.DFLAG, info);
+
+      if (r.gp.CAS_UPDATE(r.gpupdate, du)) {
+        if (helpDelete(du)) {
+          return true;
+        } else {
+          Update update = r.p.GET_UPDATE();
+          help(update);
+        }
+      }
+    }
+  }
+
   @Override
   public boolean remove(double[] key) {
-    return false;
+    return delete(key);
   }
 
   @Override

@@ -4,14 +4,14 @@ package chaomai.ckdtree.snapshot2;
  * Created by chaomai on 11/22/15.
  */
 class SearchRes<V> {
-  final InternalNode<V> gp;
+  final InternalNode gp;
   final Update gpupdate;
-  final InternalNode<V> p;
+  final InternalNode p;
   final Update pupdate;
   final Leaf<V> l;
   final int leafDepth;
 
-  SearchRes(InternalNode<V> gp, Update gpupdate, InternalNode<V> p, Update pupdate, Leaf<V> l,
+  SearchRes(InternalNode gp, Update gpupdate, InternalNode p, Update pupdate, Leaf<V> l,
             int leafDepth) {
     this.gp = gp;
     this.gpupdate = gpupdate;

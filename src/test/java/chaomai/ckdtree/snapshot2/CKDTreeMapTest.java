@@ -18,7 +18,7 @@ public class CKDTreeMapTest {
   @Test
   public void testConstructor() throws Exception {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    InternalNode<Integer> root = ckd.root;
+    InternalNode root = ckd.root;
 
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.key[0], delta);
     Assert.assertEquals(Double.POSITIVE_INFINITY, root.left.key[0], delta);
@@ -330,7 +330,7 @@ public class CKDTreeMapTest {
   private void multithreadAddHighContention() {
     int dimension = 2;
     int samples = 20000;
-    int threads = 80;
+    int threads = 40;
 
     for (int i = 0; i < rounds; ++i) {
       if (isVerbose) {
@@ -398,5 +398,192 @@ public class CKDTreeMapTest {
       System.out.println("\n High Contention Case");
     }
     multithreadAddHighContention();
+  }
+
+  private void deleteKeysFromCKD(double[][] k, CKDTreeMap ckd) {
+    for (int i = 0; i < k.length; i++) {
+      ckd.remove(k[i]);
+    }
+  }
+
+  private void deleteOnekey() {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+
+    double[] k1 = {1};
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+    ckd.add(k1, 1);
+
+    Assert.assertTrue(ckd.contains(k1));
+
+    SearchRes<Integer> res = ckd.search(k1);
+    Assert.assertNotEquals(null, res);
+
+    Assert.assertArrayEquals(k1, res.l.key, delta);
+
+
+    if (isVerbose) {
+      System.out.println("deleting");
+    }
+    ckd.remove(k1);
+
+    Assert.assertFalse(ckd.contains(k1));
+
+    SearchRes<Integer> res1 = ckd.search(k1);
+    InternalNode root = ckd.root;
+
+    Assert.assertEquals(null, res1.gp);
+    Assert.assertEquals(root, res1.p);
+    Assert.assertEquals(root.left, res1.l);
+  }
+
+  private void deleteOneDimensionKeys(int samples) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+    addKeysToCKD(k, ckd);
+    checkKeysInCKD(k, ckd, true);
+    Assert.assertEquals(samples, ckd.size());
+
+    if (isVerbose) {
+      System.out.println("deleting");
+    }
+    deleteKeysFromCKD(k, ckd);
+    checkKeysInCKD(k, ckd, false);
+    Assert.assertEquals(0, ckd.size());
+  }
+
+  private void deleteMultipleDimensionKeys(int samples, int dimension) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+    addKeysToCKD(k, ckd);
+    checkKeysInCKD(k, ckd, true);
+    Assert.assertEquals(samples, ckd.size());
+
+    if (isVerbose) {
+      System.out.println("deleting");
+    }
+    deleteKeysFromCKD(k, ckd);
+    checkKeysInCKD(k, ckd, false);
+    Assert.assertEquals(0, ckd.size());
+  }
+
+  private void addDeleteWorkToThreads(Thread[] ts, double[][] k, CKDTreeMap ckd,
+                                      int workPerThread) {
+    for (int i = 0; i < ts.length; ++i) {
+      final int workIndex = i * workPerThread;
+      ts[i] = new Thread(() -> {
+        for (int j = workIndex; j < workIndex + workPerThread; ++j) {
+          ckd.remove(k[j]);
+        }
+      });
+    }
+  }
+
+  private void multithreadDeleteOneDimensionKeys(int samples, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+    addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
+
+    checkKeysInCKD(k, ckd, true);
+    Assert.assertEquals(samples, ckd.size());
+
+    if (isVerbose) {
+      System.out.println("deleting");
+    }
+    addDeleteWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
+
+    Assert.assertEquals(0, ckd.size());
+  }
+
+  private void multithreadDeleteMultipleDimensionKeys(int samples, int dimension, int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+
+    Thread[] ts = new Thread[threads];
+    int workPerThread = samples / threads;
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+    addInsertWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
+
+    checkKeysInCKD(k, ckd, true);
+    Assert.assertEquals(samples, ckd.size());
+
+    if (isVerbose) {
+      System.out.println("deleting");
+    }
+    addDeleteWorkToThreads(ts, k, ckd, workPerThread);
+
+    startThreads(ts);
+
+    Assert.assertEquals(0, ckd.size());
+  }
+
+  @Test
+  public void testDelete() {
+    if (isVerbose) {
+      System.out.println("\ndelete One Key");
+    }
+
+    deleteOnekey();
+
+    for (int i = 1; i <= rounds; ++i) {
+      if (isVerbose) {
+        System.out.println("\nround " + i);
+      }
+
+      int samples = i * sampleSteps;
+      int dimension = i * dimensionSteps;
+      int threads = i * threadsSteps;
+
+      if (isVerbose) {
+        System.out.println(String.format("\ndelete One Dimension (%d) Keys", samples));
+      }
+      deleteOneDimensionKeys(samples);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("\ndelete Multiple (%d) Dimension (%d) Keys", dimension, samples));
+      }
+      deleteMultipleDimensionKeys(samples, dimension);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("\nMultiple (%d) threads delete One Dimension (%d) Keys", threads,
+                          samples));
+      }
+      multithreadDeleteOneDimensionKeys(samples, threads);
+
+      if (isVerbose) {
+        System.out.println(
+            String.format("\nMultiple (%d) threads delete Multiple Dimension (%d) Keys", threads,
+                          samples));
+      }
+      multithreadDeleteMultipleDimensionKeys(samples, dimension, threads);
+    }
   }
 }
