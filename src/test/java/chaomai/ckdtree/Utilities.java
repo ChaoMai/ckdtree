@@ -7,9 +7,10 @@ import java.util.Random;
  */
 public class Utilities {
   public static double[] generateRandomArray(int dimension) {
+    Random random = new Random(System.nanoTime());
     double[] array = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
-      array[i] = Math.random() * 10;
+      array[i] = random.nextDouble();
     }
     return array;
   }
