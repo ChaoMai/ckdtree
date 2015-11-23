@@ -513,6 +513,7 @@ public class CKDTreeMapTest {
 
     startThreads(ts);
 
+    checkKeysInCKD(k, ckd, false);
     Assert.assertEquals(0, ckd.size());
   }
 
@@ -540,6 +541,7 @@ public class CKDTreeMapTest {
 
     startThreads(ts);
 
+    checkKeysInCKD(k, ckd, false);
     Assert.assertEquals(0, ckd.size());
   }
 

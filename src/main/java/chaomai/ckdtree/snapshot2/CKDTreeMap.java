@@ -210,17 +210,17 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       sibling = (InternalNode) info.p.left;
     }
 
-    InternalNode newSibling = new InternalNode(sibling.key, sibling.left, sibling.right,
-                                               info.p.skippedDepth + sibling.skippedDepth +
-                                               1);
+    InternalNode ns = new InternalNode(sibling.key, sibling.left, sibling.right,
+                                       info.p.skippedDepth + sibling.skippedDepth +
+                                       1);
 
+    // dchild2
     if (info.p == info.gp.left) {
-      // dchild2
-      if (info.gp.CAS_LEFT(info.p, newSibling)) {
+      if (info.gp.CAS_LEFT(info.p, ns)) {
         this.size.getAndDecrement();
       }
     } else {
-      if (info.gp.CAS_RIGHT(info.p, newSibling)) {
+      if (info.gp.CAS_RIGHT(info.p, ns)) {
         this.size.getAndDecrement();
       }
     }
@@ -244,13 +244,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     if (sibling instanceof Leaf) {
       Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
+      // dchild1
       if (info.p == info.gp.left) {
-        // dchild1
         if (info.gp.CAS_LEFT(info.p, ns)) {
           this.size.getAndDecrement();
         }
       } else {
-        // dchild1
         if (info.gp.CAS_RIGHT(info.p, ns)) {
           this.size.getAndDecrement();
         }
