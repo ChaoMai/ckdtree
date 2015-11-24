@@ -17,6 +17,10 @@ class InternalNode extends Node {
   volatile Node right;
   private volatile Update update;
 
+  InternalNode(double[] key, Node left, Node right) {
+    this(key, left, right, 0);
+  }
+
   InternalNode(double[] key, Node left, Node right, int skippedDepth) {
     this(key, left, right, new Update(), skippedDepth);
   }

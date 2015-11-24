@@ -3,6 +3,7 @@ package chaomai.ckdtree.snapshot2;
 import chaomai.ckdtree.ICKDTreeMap;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,6 +17,11 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   final InternalNode root;
   private final int dimension;
   private final AtomicInteger size = new AtomicInteger();
+
+  private CKDTreeMap(InternalNode root, int dimension) {
+    this.root = root;
+    this.dimension = dimension;
+  }
 
   public CKDTreeMap(int dimension) {
 
@@ -356,14 +362,56 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return this.size.get();
   }
 
-  // todo: implement snapshot method mentioned in http://www.cs.utoronto.ca/~tabrown/ksts/StaticDictionary5.java
-  @Override
-  public CKDTreeMap<V> snapshot() {
-    return null;
+  private void readRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
+    if (node instanceof Leaf) {
+      return;
+    }
+
+    InternalNode in = (InternalNode) node;
+
+    refs.put(in, new Pair<>(in.left, in.right));
+    readRefs(in.left, refs);
+    readRefs(in.right, refs);
+  }
+
+  private boolean checkRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
+    if (node instanceof Leaf) {
+      return true;
+    }
+
+    InternalNode in = (InternalNode) node;
+    Pair<Node, Node> pair = refs.get(in);
+
+    if (!pair.equals(new Pair<>(in.left, in.right))) {
+      return false;
+    }
+    return checkRefs(in.left, refs) && checkRefs(in.right, refs);
+  }
+
+  private Node buildRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
+    if (node instanceof Leaf) {
+      return node;
+    }
+
+    InternalNode in = (InternalNode) node;
+    Pair<Node, Node> pair = refs.get(in);
+
+    return new InternalNode(in.key, buildRefs(pair.key, refs), buildRefs(pair.value, refs));
+  }
+
+  private InternalNode getSnapshot() {
+    final HashMap<InternalNode, Pair<Node, Node>> refs = new HashMap<>();
+    readRefs(root, refs);
+
+    if (!checkRefs(root, refs)) {
+      return null;
+    }
+
+    return (InternalNode) buildRefs(root, refs);
   }
 
   @Override
-  public CKDTreeMap<V> readOnlySnapshot() {
-    return null;
+  public CKDTreeMap<V> snapshot() {
+    return new CKDTreeMap<>(getSnapshot(), this.dimension);
   }
 }

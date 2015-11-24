@@ -608,7 +608,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  @Override
   public CKDTreeMap<V> readOnlySnapshot() {
     if (isReadOnly()) {
       return this;

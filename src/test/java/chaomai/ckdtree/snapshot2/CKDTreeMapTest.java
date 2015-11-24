@@ -588,4 +588,91 @@ public class CKDTreeMapTest {
       multithreadDeleteMultipleDimensionKeys(samples, dimension, threads);
     }
   }
+
+  private void snapshotOnEmptyCKD(int samples) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+
+    CKDTreeMap<Integer> snapshot = ckd.snapshot();
+
+    double[][] k = Utilities.generateRandomArrays(samples, 1);
+
+    addKeysToCKD(k, ckd);
+
+    // check snapshot
+    Assert.assertEquals(0, snapshot.size());
+
+    InternalNode snapshotRoot = snapshot.root;
+
+    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.key[0], delta);
+    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.left.key[0], delta);
+    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.right.key[0], delta);
+    Assert.assertTrue(snapshotRoot.left instanceof Leaf);
+    Assert.assertTrue(snapshotRoot.right instanceof Leaf);
+
+    // check ckd
+    checkKeysInCKD(k, ckd, true);
+  }
+
+  private void snapshotOnOneDimensionCKD(int samples) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
+    double[][] k1 = Utilities.generateRandomArrays(samples, 1);
+    double[][] k2 = Utilities.generateRandomArrays(samples, 1);
+
+    addKeysToCKD(k1, ckd);
+
+    // check ckd
+    checkKeysInCKD(k1, ckd, true);
+
+    CKDTreeMap<Integer> snapshot = ckd.snapshot();
+
+    addKeysToCKD(k2, ckd);
+
+    // check snapshot
+    checkKeysInCKD(k1, snapshot, true);
+
+    //    Assert.assertEquals(samples, snapshot.size());
+
+    // check ckd
+    checkKeysInCKD(k1, ckd, true);
+    checkKeysInCKD(k2, ckd, true);
+
+    // check snapshot again
+    checkKeysInCKD(k1, snapshot, true);
+  }
+
+  @Test
+  public void testSnapshot() throws Exception {
+    for (int i = 1; i <= rounds; ++i) {
+      if (isVerbose) {
+        System.out.println("\nround " + i);
+      }
+
+      int samples = i * sampleSteps;
+      int dimension = i * dimensionSteps;
+      int threads = i * threadsSteps;
+
+      if (isVerbose) {
+        System.out.println(String.format("\nsnapshot On One Dimension (%d) Keys", samples));
+      }
+      snapshotOnEmptyCKD(samples);
+
+      if (isVerbose) {
+        System.out.println(String.format("\nsnapshot On One Dimension (%d) Keys", samples));
+      }
+      snapshotOnOneDimensionCKD(samples);
+
+      //      if (isVerbose) {
+      //        System.out.println(
+      //            String.format("\nsnapshot On Multiple (%d) Dimension (%d) Keys", dimension, samples));
+      //      }
+      //      snapshotOnMultipleDimensionCKD(samples, dimension);
+      //
+      //      if (isVerbose) {
+      //        System.out.println(
+      //            String.format("\nmultithread Update Snapshot On Multiple (%d) Dimension (%d) Keys",
+      //                          dimension, samples));
+      //        multithreadUpdateSnapshotOnOneDimensionCKD(samples, threads);
+      //      }
+    }
+  }
 }
