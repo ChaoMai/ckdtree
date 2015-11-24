@@ -357,6 +357,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return delete(key);
   }
 
+  // todo: snapshot?
   @Override
   public int size() {
     return this.size.get();

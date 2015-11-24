@@ -619,7 +619,12 @@ public class CKDTreeMapTest {
     checkKeysInCKD(k2, snapshot, false);
   }
 
-  private void multithreadUpdateSnapshotOnOneDimensionCKD(int samples, int threads) {
+  // todo: finish this
+  private void multithreadUpdateSnapshotOnMultipleDimensionCKD(int samples, int dimension,
+                                                               int threads) {
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
   }
 
   @Test
@@ -648,7 +653,7 @@ public class CKDTreeMapTest {
         System.out.println(
             String.format("\nmultithread Update Snapshot On Multiple (%d) Dimension (%d) Keys",
                           dimension, samples));
-        multithreadUpdateSnapshotOnOneDimensionCKD(samples, threads);
+        multithreadUpdateSnapshotOnMultipleDimensionCKD(samples, dimension, threads);
       }
     }
   }
