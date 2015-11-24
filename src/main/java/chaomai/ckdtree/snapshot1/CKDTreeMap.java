@@ -495,14 +495,9 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     // mark1
     Update m1u = new Update(State.MARK1, info);
-
-    Update update = info.p.GET_UPDATE();
-
-    boolean result = info.p.CAS_UPDATE(info.pupdate, m1u);
-
-    // should be same to `if (info.p.CAS_UPDATE(info.pupdate, m1u)`,
-    // the update of p will be bound to be helped if mark1 cas failed.
-    if (result || (update.state == State.MARK1 && update.info == info)) {
+    // should be same to `if (result || (update.state == State.MARK1 && update.info == info)))`,
+    // because no mater what the update of p is, it will be bound to be helped if mark1 cas failed.
+    if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
       // sibling of parent's child should be obtained after parent marked.
       // since before parent parked, children aren't stable.
       Node<V> sibling;
@@ -539,6 +534,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         throw new RuntimeException("Should not happen");
       }
     } else {
+      Update update = info.p.GET_UPDATE();
       help(update);
 
       // backtrack cas
