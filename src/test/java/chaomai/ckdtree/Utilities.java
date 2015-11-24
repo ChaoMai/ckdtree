@@ -1,6 +1,8 @@
 package chaomai.ckdtree;
 
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by chaomai on 11/5/15.
@@ -51,5 +53,14 @@ public class Utilities {
     }
 
     return randLength - 1;
+  }
+
+  public static void stopExecutor(ExecutorService executor) {
+    try {
+      executor.shutdown();
+      executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 }

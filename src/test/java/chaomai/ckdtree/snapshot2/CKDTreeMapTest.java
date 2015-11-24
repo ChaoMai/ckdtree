@@ -4,6 +4,11 @@ import chaomai.ckdtree.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * Created by chaomai on 11/22/15.
  */
@@ -234,45 +239,37 @@ public class CKDTreeMapTest {
     addMultipleDimensionDimensionDuplicateKeys();
   }
 
-  private void addInsertWorkToThreads(Thread[] ts, double[][] k, CKDTreeMap ckd,
-                                      int workPerThread) {
-    for (int i = 0; i < ts.length; ++i) {
-      final int workIndex = i * workPerThread;
-      ts[i] = new Thread(() -> {
+  private void startInsertWork(int threads, double[][] k, CKDTreeMap ckd, int workPerThread) {
+    ExecutorService executor = Executors.newFixedThreadPool(threads);
+    ArrayList<Callable<Integer>> taskList = new ArrayList<>();
+
+    for (int i = 0; i < threads; ++i) {
+      int workIndex = i * workPerThread;
+      taskList.add(() -> {
         for (int j = workIndex; j < workIndex + workPerThread; ++j) {
           ckd.add(k[j], j);
         }
+        return 0;
       });
     }
-  }
 
-  private void startThreads(Thread[] ts) {
-    for (Thread t : ts) {
-      t.start();
+    try {
+      executor.invokeAll(taskList);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
 
-    for (Thread t : ts) {
-      try {
-        t.join();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
+    Utilities.stopExecutor(executor);
   }
 
   private void multithreadAddOneDimensionKeys(int samples, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double[][] k = Utilities.generateRandomArrays(samples, 1);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
-
     Assert.assertEquals(samples, ckd.size());
   }
 
@@ -281,15 +278,10 @@ public class CKDTreeMapTest {
     double[][] k = Utilities.generateRandomArrays(samples, 1);
     int duplicateCount = Utilities.makeDuplicateKeys(k);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
-
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
@@ -297,15 +289,10 @@ public class CKDTreeMapTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
     double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
-
     Assert.assertEquals(samples, ckd.size());
   }
 
@@ -315,15 +302,10 @@ public class CKDTreeMapTest {
     double[][] k = Utilities.generateRandomArrays(samples, dimension);
     int duplicateCount = Utilities.makeDuplicateKeys(k);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
-
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
-
     Assert.assertEquals(samples - duplicateCount, ckd.size());
   }
 
@@ -340,12 +322,8 @@ public class CKDTreeMapTest {
       CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
       double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
-      Thread[] ts = new Thread[threads];
       int workPerThread = samples / threads;
-
-      addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-      startThreads(ts);
+      startInsertWork(threads, k, ckd, workPerThread);
 
       checkKeysInCKD(k, ckd, true);
       Assert.assertEquals(samples, ckd.size());
@@ -477,31 +455,39 @@ public class CKDTreeMapTest {
     Assert.assertEquals(0, ckd.size());
   }
 
-  private void addDeleteWorkToThreads(Thread[] ts, double[][] k, CKDTreeMap ckd,
-                                      int workPerThread) {
-    for (int i = 0; i < ts.length; ++i) {
-      final int workIndex = i * workPerThread;
-      ts[i] = new Thread(() -> {
+  private void startDeleteWork(int threads, double[][] k, CKDTreeMap ckd, int workPerThread) {
+    ExecutorService executor = Executors.newFixedThreadPool(threads);
+    ArrayList<Callable<Integer>> taskList = new ArrayList<>();
+
+    for (int i = 0; i < threads; ++i) {
+      int workIndex = i * workPerThread;
+      taskList.add(() -> {
         for (int j = workIndex; j < workIndex + workPerThread; ++j) {
           ckd.remove(k[j]);
         }
+        return 0;
       });
     }
+
+    try {
+      executor.invokeAll(taskList);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    Utilities.stopExecutor(executor);
   }
 
   private void multithreadDeleteOneDimensionKeys(int samples, int threads) {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
     double[][] k = Utilities.generateRandomArrays(samples, 1);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
 
     if (isVerbose) {
       System.out.println("adding");
     }
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
     Assert.assertEquals(samples, ckd.size());
@@ -509,9 +495,7 @@ public class CKDTreeMapTest {
     if (isVerbose) {
       System.out.println("deleting");
     }
-    addDeleteWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startDeleteWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, false);
     Assert.assertEquals(0, ckd.size());
@@ -521,15 +505,12 @@ public class CKDTreeMapTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
     double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
-    Thread[] ts = new Thread[threads];
     int workPerThread = samples / threads;
 
     if (isVerbose) {
       System.out.println("adding");
     }
-    addInsertWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startInsertWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, true);
     Assert.assertEquals(samples, ckd.size());
@@ -537,9 +518,7 @@ public class CKDTreeMapTest {
     if (isVerbose) {
       System.out.println("deleting");
     }
-    addDeleteWorkToThreads(ts, k, ckd, workPerThread);
-
-    startThreads(ts);
+    startDeleteWork(threads, k, ckd, workPerThread);
 
     checkKeysInCKD(k, ckd, false);
     Assert.assertEquals(0, ckd.size());
@@ -629,6 +608,7 @@ public class CKDTreeMapTest {
 
     // check snapshot
     checkKeysInCKD(k1, snapshot, true);
+    checkKeysInCKD(k2, snapshot, false);
 
     // check ckd
     checkKeysInCKD(k1, ckd, true);
@@ -636,6 +616,7 @@ public class CKDTreeMapTest {
 
     // check snapshot
     checkKeysInCKD(k1, snapshot, true);
+    checkKeysInCKD(k2, snapshot, false);
   }
 
   private void multithreadUpdateSnapshotOnOneDimensionCKD(int samples, int threads) {
