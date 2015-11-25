@@ -21,7 +21,7 @@ import java.util.Map;
 
 public class CKDTreeMapTest {
   int dimensionSteps = 1;
-  int sampleSteps = 20000;
+  int sampleSteps = 200000;
   int threadsSteps = 10;
   int rounds = 5;
   double delta = 0.001;

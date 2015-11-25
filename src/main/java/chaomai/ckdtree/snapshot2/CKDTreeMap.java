@@ -268,7 +268,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       Update supdate = ((InternalNode) sibling).GET_UPDATE();
       Update m2u = new Update(State.MARK2, info);
 
-      if (supdate.state == State.CLEAN && ((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
+      boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
+
+      if ((supdate.state == State.CLEAN && sresult) ||
+          (supdate.state == State.MARK2 && supdate.info == info)) {
         helpMarked2(m2u);
       } else {
         help(supdate);
@@ -281,7 +284,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     // mark1
     Update m1u = new Update(State.MARK1, info);
-    if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
+
+    boolean result = info.p.CAS_UPDATE(info.pupdate, m1u);
+
+    Update update = info.p.GET_UPDATE();
+
+    if (result || (update.state == State.MARK1 && update.info == info)) {
       Node sibling;
 
       if (info.l == info.p.left) {
@@ -298,7 +306,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         Update supdate = ((InternalNode) sibling).GET_UPDATE();
         Update m2u = new Update(State.MARK2, info);
 
-        if (supdate.state == State.CLEAN && ((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
+        boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
+
+        if ((supdate.state == State.CLEAN && sresult) ||
+            (supdate.state == State.MARK2 && update.info == info)) {
           helpMarked2(m2u);
           return true;
         } else {
@@ -309,7 +320,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         throw new RuntimeException("Should not happen");
       }
     } else {
-      Update update = info.p.GET_UPDATE();
       help(update);
 
       // backtrack cas
