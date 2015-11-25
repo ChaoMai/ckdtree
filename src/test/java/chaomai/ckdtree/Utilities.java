@@ -1,20 +1,23 @@
-package chaomai.ckdtree.snapshot1;
+package chaomai.ckdtree;
 
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by chaomai on 11/5/15.
  */
-class Utilities {
-  static double[] generateRandomArray(int dimension) {
+public class Utilities {
+  public static double[] generateRandomArray(int dimension) {
+    Random random = new Random(System.nanoTime());
     double[] array = new double[dimension];
     for (int i = 0; i < dimension; ++i) {
-      array[i] = Math.random() * 10;
+      array[i] = random.nextDouble();
     }
     return array;
   }
 
-  static double[][] generateRandomArrays(int samples, int dimension) {
+  public static double[][] generateRandomArrays(int samples, int dimension) {
     double[][] array = new double[samples][dimension];
     for (int i = 0; i < samples; ++i) {
       array[i] = generateRandomArray(dimension);
@@ -22,25 +25,16 @@ class Utilities {
     return array;
   }
 
-  static void printArray(double[] array) {
-    String str = "[";
-
-    for (double d : array) {
-      str += d + ", ";
+  public static String KeyToString(double[] key) {
+    String ret = new String();
+    for (double d : key) {
+      ret += d + ",";
     }
-    str = str.substring(0, str.length() - 2);
-    str += "]";
 
-    System.out.println(str);
+    return ret;
   }
 
-  static void printArray(double[][] array) {
-    for (double[] arr : array) {
-      printArray(arr);
-    }
-  }
-
-  static int makeDuplicateKeys(double[][] array) {
+  public static int makeDuplicateKeys(double[][] array) {
     Random rand = new Random();
     int min = 0;
     int max = array.length - 1;
@@ -59,5 +53,14 @@ class Utilities {
     }
 
     return randLength - 1;
+  }
+
+  public static void stopExecutor(ExecutorService executor) {
+    try {
+      executor.shutdown();
+      executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 }
