@@ -1,5 +1,6 @@
 package chaomai.ckdtree;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,10 @@ public class Utilities {
     }
 
     return ret;
+  }
+
+  public static void printEntry(Map.Entry<double[], Integer> l) {
+    System.out.println(String.format("<[%s], %d>", KeyToString(l.getKey()), l.getValue()));
   }
 
   public static int makeDuplicateKeys(double[][] array) {
