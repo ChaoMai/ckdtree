@@ -1,5 +1,6 @@
 package chaomai.ckdtree;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -19,11 +20,35 @@ public class Utilities {
   }
 
   public static double[][] generateRandomArrays(int samples, int dimension) {
-    double[][] array = new double[samples][dimension];
-    for (int i = 0; i < samples; ++i) {
-      array[i] = generateRandomArray(dimension);
+    double[][] array;
+    boolean isRetry;
+
+    while (true) {
+      isRetry = false;
+      HashSet<Double> set = new HashSet<>();
+
+      array = new double[samples][dimension];
+      for (int i = 0; i < samples; ++i) {
+        array[i] = generateRandomArray(dimension);
+
+        for (int j = 0; j < dimension; ++j) {
+          if (set.contains(array[i][j])) {
+            isRetry = true;
+            break;
+          } else {
+            set.add(array[i][j]);
+          }
+        }
+
+        if (isRetry) {
+          break;
+        }
+      }
+
+      if (!isRetry && set.size() == samples * dimension) {
+        return array;
+      }
     }
-    return array;
   }
 
   public static String KeyToString(double[] key) {

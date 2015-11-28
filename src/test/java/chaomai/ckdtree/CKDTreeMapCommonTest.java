@@ -16,21 +16,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by chaomai on 11/26/15.
  */
-
-// note!!!!!!!!!
-// double[][] k1 = Utilities.generateRandomArrays(samples, dimension);
-// double[][] k2 = Utilities.generateRandomArrays(samples, dimension);
-// ...
-// some test is based on this assumption:
-// unless Utilities.makeDuplicateKeys(k1) is called,
-// all keys in k1, k2, ... are NOT duplicated.
-
 public class CKDTreeMapCommonTest {
   int dimensionSteps = 1;
   int sampleSteps = 20000;
   int threadsSteps = 10;
   int rounds = 5;
-  double delta = 0.001;
   boolean isVerbose = true;
 
   private void addKeysToCKD(double[][] k, CKDTreeMap ckd) {
@@ -578,13 +568,13 @@ public class CKDTreeMapCommonTest {
       });
     }
 
-    for (int i = 0; i < threads; ++i) {
-      taskList.add(() -> {
-        CKDTreeMap<Integer> snapshot = ckd.snapshot();
-        TimeUnit.MICROSECONDS.sleep(10);
-        return 0;
-      });
-    }
+    taskList.add(() -> {
+      for (int i = 0; i < threads; ++i) {
+        ckd.snapshot();
+        TimeUnit.MICROSECONDS.sleep(50);
+      }
+      return 0;
+    });
 
     try {
       executor.invokeAll(taskList);
@@ -623,8 +613,8 @@ public class CKDTreeMapCommonTest {
 
       if (isVerbose) {
         System.out.println(
-            String.format("\nmultithread Snapshot On Multiple (%d) Dimension (%d) Keys", dimension,
-                          samples));
+            String.format("\nmultithread (%d) Snapshot On Multiple (%d) Dimension (%d) Keys",
+                          threads, dimension, samples));
         multithreadSnapshotOnMultipleDimensionCKD(samples, threads, dimension);
       }
     }
