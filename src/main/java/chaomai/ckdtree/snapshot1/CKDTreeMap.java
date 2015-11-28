@@ -42,7 +42,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     this(false, dimension);
   }
 
-  private InternalNode<V> RDCSS_COMPLETE(boolean abort) {
+  private InternalNode<V> RDCSS_COMPLETE(boolean isAbort) {
     while (true) {
       Object v = this.root;
 
@@ -55,7 +55,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         Node<V> expl = desc.ol;
         InternalNode<V> nv = desc.nv;
 
-        if (abort) {
+        if (isAbort) {
           if (CAS_ROOT(desc, ov)) {
             return ov;
           } else {
@@ -207,12 +207,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   SearchRes<V> search(double[] key) {
     while (true) {
-      Object res = searchKey(key, this.RDCSS_READ_ROOT().gen);
+      Object result = searchKey(key, this.RDCSS_READ_ROOT().gen);
 
-      if (res == SearchRes.RESTART) {
+      if (result == SearchRes.RESTART) {
         continue;
       } else {
-        return (SearchRes<V>) res;
+        return (SearchRes<V>) result;
       }
     }
   }
