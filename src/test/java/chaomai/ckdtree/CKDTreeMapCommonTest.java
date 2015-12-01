@@ -1,6 +1,10 @@
 package chaomai.ckdtree;
 
-import chaomai.ckdtree.snapshot1.CKDTreeMap;
+//import chaomai.ckdtree.snapshot1.CKDTreeMap;
+
+//import chaomai.ckdtree.snapshot2.CKDTreeMap;
+
+import chaomai.ckdtree.snapshot3.CKDTreeMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -10,8 +14,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-//import chaomai.ckdtree.snapshot2.CKDTreeMap;
 
 /**
  * Created by chaomai on 11/26/15.
