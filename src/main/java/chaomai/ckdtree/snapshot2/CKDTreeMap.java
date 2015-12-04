@@ -69,7 +69,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       gp = p;
       gpupdate = pupdate;
       p = (InternalNode) cur;
-      pupdate = p.GET_UPDATE();
+      pupdate = p.update;
       depth += p.skippedDepth;
 
       if (keyCompare(key, cur.key, depth++) < 0) {
@@ -172,7 +172,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         helpInsert(iu);
         return true;
       } else {
-        Update update = r.p.GET_UPDATE();
+        Update update = r.p.update;
         help(update);
       }
     }
@@ -232,7 +232,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
 
     // unflag
-    info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+    info.gp.CAS_UPDATE(info.gp.update, new Update());
   }
 
   // sibling is leaf
@@ -262,10 +262,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       }
 
       // unflag
-      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+      info.gp.CAS_UPDATE(info.gp.update, new Update());
 
     } else if (sibling instanceof InternalNode) {
-      Update supdate = ((InternalNode) sibling).GET_UPDATE();
+      Update supdate = ((InternalNode) sibling).update;
       Update m2u = new Update(State.MARK2, info);
 
       boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
@@ -287,7 +287,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     boolean result = info.p.CAS_UPDATE(info.pupdate, m1u);
 
-    Update update = info.p.GET_UPDATE();
+    Update update = info.p.update;
 
     if (result || (update.state == State.MARK1 && update.info == info)) {
       Node sibling;
@@ -303,7 +303,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         helpMarked1(m1u);
         return true;
       } else if (sibling instanceof InternalNode) {
-        Update supdate = ((InternalNode) sibling).GET_UPDATE();
+        Update supdate = ((InternalNode) sibling).update;
         Update m2u = new Update(State.MARK2, info);
 
         boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
@@ -323,13 +323,13 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       help(update);
 
       // backtrack cas
-      info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
+      info.gp.CAS_UPDATE(info.gp.update, new Update());
 
       return false;
     }
   }
 
-  boolean delete(double[] key) {
+  private boolean delete(double[] key) {
     while (true) {
       SearchRes<V> r = search(key);
 
@@ -355,7 +355,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         if (helpDelete(du)) {
           return true;
         } else {
-          Update update = r.p.GET_UPDATE();
+          Update update = r.p.update;
           help(update);
         }
       }

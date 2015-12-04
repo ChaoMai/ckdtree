@@ -15,7 +15,7 @@ class InternalNode extends Node {
   final int skippedDepth;
   volatile Node left;
   volatile Node right;
-  private volatile Update update;
+  volatile Update update;
 
   InternalNode(double[] key, Node left, Node right) {
     this(key, left, right, 0);
@@ -43,17 +43,5 @@ class InternalNode extends Node {
 
   boolean CAS_UPDATE(Update old, Update n) {
     return updateUpdater.compareAndSet(this, old, n);
-  }
-
-  void WRITE_LEFT(Node left) {
-    leftUpdater.set(this, left);
-  }
-
-  void WRITE_RIGHT(Node right) {
-    rightUpdater.set(this, right);
-  }
-
-  Update GET_UPDATE() {
-    return updateUpdater.get(this);
   }
 }
