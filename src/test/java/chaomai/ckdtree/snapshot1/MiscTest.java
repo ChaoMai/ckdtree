@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -288,5 +289,30 @@ public class MiscTest {
     stop(executor);
 
     System.out.println(atomicInt.get());
+  }
+
+  @Test
+  public void testHashSet() {
+    HashSet<Double> set1 = new HashSet<>();
+
+    Double d1 = new Double(2.1);
+    Double d2 = new Double(2.1);
+
+    Assert.assertEquals(true, set1.add(d1));
+    Assert.assertEquals(false, set1.add(d2));
+
+    Assert.assertEquals(true, set1.contains(d1));
+    Assert.assertEquals(true, set1.contains(d2));
+
+    HashSet<double[]> set2 = new HashSet<>();
+
+    double[] da1 = {1.1, 2.1};
+    double[] da2 = {1.1, 2.1};
+
+    Assert.assertEquals(true, set2.add(da1));
+    Assert.assertEquals(true, set2.add(da2));
+
+    Assert.assertEquals(true, set2.contains(da1));
+    Assert.assertEquals(true, set2.contains(da2));
   }
 }

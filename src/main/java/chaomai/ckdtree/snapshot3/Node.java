@@ -12,21 +12,25 @@ class Node<V> {
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
   private static final AtomicReferenceFieldUpdater<Node, Info> infoUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Info.class, "info");
+  private static final AtomicReferenceFieldUpdater<Node, Info> dirtyUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Info.class, "dirty");
   final double[] key;
   final V value;
   final int skippedDepth;
   volatile Node<V> left;
   volatile Node<V> right;
   volatile Info info;
+  volatile Info dirty;
 
-  Node(final double[] key, final V value, final int skippedDepth, final Node<V> left,
-       final Node<V> right) {
+  private Node(final double[] key, final V value, final int skippedDepth, final Node<V> left,
+               final Node<V> right) {
     this.key = key;
     this.value = value;
     this.skippedDepth = skippedDepth;
     this.left = left;
     this.right = right;
     this.info = null;
+    this.dirty = null;
   }
 
   Node(final double[] key, final V value) {
@@ -37,15 +41,15 @@ class Node<V> {
     this(key, null, skippedDepth, left, right);
   }
 
-  boolean CAS_LEFT(Node old, Node n) {
+  boolean CAS_LEFT(final Node<V> old, final Node<V> n) {
     return leftUpdater.compareAndSet(this, old, n);
   }
 
-  boolean CAS_RIGHT(Node old, Node n) {
+  boolean CAS_RIGHT(final Node<V> old, final Node<V> n) {
     return rightUpdater.compareAndSet(this, old, n);
   }
 
-  boolean CAS_INFO(Info old, Info n) {
+  boolean CAS_INFO(final Info old, final Info n) {
     return infoUpdater.compareAndSet(this, old, n);
   }
 }

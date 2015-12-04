@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Created by chaomai on 12/2/15.
  */
+
 @SuppressWarnings({"unused"})
 public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   final Node<V> root;
@@ -53,12 +54,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  SearchRes<V> search(double[] key) {
+  private SearchRes<V> search(double[] key) {
     Node<V> gp = null;
     Info gpinfo = null;
     Node<V> p = null;
-    Info pinfo = null;
-    Node<V> l = null;
+    Info pinfo;
+    Node<V> l;
 
     int depth = 0;
     Node<V> cur = this.root;
@@ -81,32 +82,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     // p is doomed to be set.
     pinfo = p.info;
+
     l = cur;
 
     return new SearchRes<>(gp, gpinfo, p, pinfo, l, depth);
-  }
-
-  private void help(Info info) {
-    if (info.getClass() == InsertInfo.class) {
-      helpInsert((InsertInfo<V>) info);
-    }
-  }
-
-  private void helpInsert(InsertInfo<V> info) {
-    if (info.l == info.p.left) {
-      // ichild
-      if (info.p.CAS_LEFT(info.l, info.newInternal)) {
-        this.size.getAndIncrement();
-      }
-    } else {
-      // ichild
-      if (info.p.CAS_RIGHT(info.l, info.newInternal)) {
-        this.size.getAndIncrement();
-      }
-    }
-
-    // unflag
-    info.p.CAS_INFO(info, new Clean());
   }
 
   private Node<V> createSubTree(double[] k, V v, Node<V> l, int depth) {
@@ -134,9 +113,38 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return new Node<>(maxKey, skip, left, right);
   }
 
+  private void help(Info info) {
+    if (info.getClass() == InsertInfo.class) {
+      helpInsert((InsertInfo<V>) info);
+    } else if (info.getClass() == DeleteInfo.class) {
+      helpDelete((DeleteInfo<V>) info);
+    } else if (info.getClass() == Mark1.class) {
+      helpMarked1(((Mark1<V>) info).deleteInfo);
+    } else if (info.getClass() == Mark2.class) {
+      helpMarked2(((Mark2<V>) info).deleteInfo);
+    }
+  }
+
+  private void helpInsert(InsertInfo<V> info) {
+    if (info.l == info.p.left) {
+      // ichild
+      if (info.p.CAS_LEFT(info.l, info.newInternal)) {
+        this.size.getAndIncrement();
+      }
+    } else {
+      // ichild
+      if (info.p.CAS_RIGHT(info.l, info.newInternal)) {
+        this.size.getAndIncrement();
+      }
+    }
+
+    // unflag
+    info.p.CAS_INFO(info, new Clean());
+  }
+
   private boolean insert(double[] key, V value) {
     while (true) {
-      SearchRes<V> sr = search(key);
+      final SearchRes<V> sr = search(key);
 
       if (sr.l != sr.p.left && sr.l != sr.p.right) {
         continue;
@@ -146,15 +154,15 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         return false;
       }
 
-      if (sr.p.info != null && sr.p.info.getClass() != Clean.class) {
-        help(sr.p.info);
+      if (sr.pinfo != null && sr.pinfo.getClass() != Clean.class) {
+        help(sr.pinfo);
         continue;
       }
 
-      Node<V> newInternal = createSubTree(key, value, sr.l, sr.leafDepth);
+      final Node<V> newInternal = createSubTree(key, value, sr.l, sr.leafDepth);
 
       // iflag
-      InsertInfo<V> info = new InsertInfo<>(sr.p, newInternal, sr.l);
+      final InsertInfo<V> info = new InsertInfo<>(sr.p, newInternal, sr.l);
 
       if (sr.p.CAS_INFO(sr.pinfo, info)) {
         helpInsert(info);
@@ -178,7 +186,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public boolean contains(double[] key) {
-    SearchRes sr = search(key);
+    final SearchRes sr = search(key);
     return keyEqual(sr.l.key, key);
   }
 
@@ -192,9 +200,176 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return null;
   }
 
+  // sibling is InternalNode
+  private void helpMarked2(DeleteInfo<V> info) {
+    final Node<V> sibling;
+
+    if (info.l == info.p.left) {
+      sibling = info.p.right;
+    } else {
+      sibling = info.p.left;
+    }
+
+    final Node<V> ns =
+        new Node<>(sibling.key, info.p.skippedDepth + sibling.skippedDepth + 1, sibling.left,
+                   sibling.right);
+
+    // dchild2
+    if (info.p == info.gp.left) {
+      if (info.gp.CAS_LEFT(info.p, ns)) {
+        this.size.getAndDecrement();
+      }
+    } else {
+      if (info.gp.CAS_RIGHT(info.p, ns)) {
+        this.size.getAndDecrement();
+      }
+    }
+
+    // unflag
+    info.gp.CAS_INFO(info, new Clean());
+  }
+
+  // sibling may be a leaf
+  private void helpMarked1(DeleteInfo<V> info) {
+    final Node<V> sibling;
+
+    if (info.l == info.p.left) {
+      sibling = info.p.right;
+    } else {
+      sibling = info.p.left;
+    }
+
+    if (sibling.left == null) {
+      // sibling is Leaf
+      final Node<V> ns = new Node<>(sibling.key, sibling.value);
+
+      // dchild1
+      if (info.p == info.gp.left) {
+        if (info.gp.CAS_LEFT(info.p, ns)) {
+          this.size.getAndDecrement();
+        }
+      } else {
+        if (info.gp.CAS_RIGHT(info.p, ns)) {
+          this.size.getAndDecrement();
+        }
+      }
+
+      // unflag
+      info.gp.CAS_INFO(info, new Clean());
+
+    } else if (sibling.left != null) {
+      // sibling is Internal Node
+      final Info sinfo = sibling.info;
+
+      if (sinfo != null && sinfo.getClass() != Clean.class) {
+        help(sinfo);
+      } else {
+        boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+        final Info curSinfo = info.p.info;
+
+        if (sresult ||
+            (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
+          helpMarked2(info);
+        } else {
+          help(sibling.info);
+        }
+      }
+    }
+  }
+
+  private boolean helpDelete(DeleteInfo<V> info) {
+    // mark1
+    final boolean result = info.p.CAS_INFO(info.pinfo, new Mark1<>(info));
+    final Info curPinfo = info.p.info;
+
+    if (result ||
+        (curPinfo.getClass() == Mark1.class && ((Mark1<V>) curPinfo).deleteInfo == info)) {
+      final Node<V> sibling;
+
+      if (info.l == info.p.left) {
+        sibling = info.p.right;
+      } else {
+        sibling = info.p.left;
+      }
+
+      // check sibling
+      if (sibling.left == null) {
+        // sibling is Leaf
+        helpMarked1(info);
+        return true;
+      } else if (sibling.left != null) {
+        // sibling is Internal Node
+        final Info sinfo = sibling.info;
+
+        if (sinfo != null && sinfo.getClass() != Clean.class) {
+          help(sinfo);
+          return false;
+        } else {
+          boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+          final Info curSinfo = info.p.info;
+
+          if (sresult ||
+              (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
+            helpMarked2(info);
+            return true;
+          } else {
+            help(sibling.info);
+            return false;
+          }
+        }
+      }
+    } else {
+      // backtrack cas
+      help(curPinfo);
+      info.gp.CAS_INFO(info, new Clean());
+      return false;
+    }
+
+    throw new RuntimeException("Should not happen");
+  }
+
+  private boolean delete(double[] key) {
+    while (true) {
+      final SearchRes<V> sr = search(key);
+
+      if (sr.p != sr.gp.left && sr.p != sr.gp.right) {
+        continue;
+      }
+
+      if (sr.l != sr.p.left && sr.l != sr.p.right) {
+        continue;
+      }
+
+      if (!keyEqual(sr.l.key, key)) {
+        return false;
+      }
+
+      if (sr.gpinfo != null && sr.gpinfo.getClass() != Clean.class) {
+        help(sr.gpinfo);
+        continue;
+      }
+
+      if (sr.pinfo != null && sr.pinfo.getClass() != Clean.class) {
+        help(sr.pinfo);
+        continue;
+      }
+
+      // dflag
+      final DeleteInfo<V> info = new DeleteInfo<>(sr.gp, sr.p, sr.pinfo, sr.l);
+
+      if (sr.gp.CAS_INFO(sr.gpinfo, info)) {
+        if (helpDelete(info)) {
+          return true;
+        } else {
+          help(sr.gp.info);
+        }
+      }
+    }
+  }
+
   @Override
   public boolean remove(double[] key) {
-    return false;
+    return delete(key);
   }
 
   @Override
