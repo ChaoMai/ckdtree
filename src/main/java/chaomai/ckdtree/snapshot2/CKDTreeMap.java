@@ -266,13 +266,17 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     } else if (sibling instanceof InternalNode) {
       Update supdate = ((InternalNode) sibling).update;
-      Update m2u = new Update(State.MARK2, info);
 
-      boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
+      if (supdate.state == State.CLEAN) {
+        Update m2u = new Update(State.MARK2, info);
+        boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-      if ((supdate.state == State.CLEAN && sresult) ||
-          (supdate.state == State.MARK2 && supdate.info == info)) {
-        helpMarked2(m2u);
+        if ((supdate.state == State.CLEAN && sresult) ||
+            (supdate.state == State.MARK2 && supdate.info == info)) {
+          helpMarked2(m2u);
+        } else {
+          help(((InternalNode) sibling).update);
+        }
       } else {
         help(supdate);
       }
@@ -304,20 +308,23 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         return true;
       } else if (sibling instanceof InternalNode) {
         Update supdate = ((InternalNode) sibling).update;
-        Update m2u = new Update(State.MARK2, info);
 
-        boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
+        if (supdate.state == State.CLEAN) {
+          Update m2u = new Update(State.MARK2, info);
+          boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-        if ((supdate.state == State.CLEAN && sresult) ||
-            (supdate.state == State.MARK2 && update.info == info)) {
-          helpMarked2(m2u);
-          return true;
+          if ((supdate.state == State.CLEAN && sresult) ||
+              (supdate.state == State.MARK2 && supdate.info == info)) {
+            helpMarked2(m2u);
+            return true;
+          } else {
+            help(((InternalNode) sibling).update);
+            return false;
+          }
         } else {
           help(supdate);
           return false;
         }
-      } else {
-        throw new RuntimeException("Should not happen");
       }
     } else {
       help(update);
@@ -327,6 +334,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
       return false;
     }
+
+    throw new RuntimeException("Should not happen");
   }
 
   private boolean delete(double[] key) {

@@ -259,13 +259,14 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     } else if (sibling.left != null) {
       // sibling is Internal Node
+      // unnecessary to use a wile here, which using infinite loop when inserting a parent.
       final Info sinfo = sibling.info;
 
       if (sinfo != null && sinfo.getClass() != Clean.class) {
         help(sinfo);
       } else {
-        boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
-        final Info curSinfo = info.p.info;
+        final boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+        final Info curSinfo = sibling.info;
 
         if (sresult ||
             (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
@@ -305,8 +306,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
           help(sinfo);
           return false;
         } else {
-          boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
-          final Info curSinfo = info.p.info;
+          final boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+          final Info curSinfo = sibling.info;
 
           if (sresult ||
               (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {

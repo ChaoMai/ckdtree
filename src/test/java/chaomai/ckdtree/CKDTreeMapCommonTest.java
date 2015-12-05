@@ -674,7 +674,6 @@ public class CKDTreeMapCommonTest {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
     double[][] k = Utilities.generateRandomArrays(samples, dimension);
 
-    int workPerThread = samples / threads;
     startInsertWork(threads, k, ckd);
 
     checkKeysInCKD(k, ckd, true);
@@ -700,7 +699,7 @@ public class CKDTreeMapCommonTest {
 
   @Test
   public void testSpecial() {
-    for (int i = 0; i < 500; ++i) {
+    for (int i = 0; i < 50000; ++i) {
       try {
         testDelete();
       } catch (Exception e) {
