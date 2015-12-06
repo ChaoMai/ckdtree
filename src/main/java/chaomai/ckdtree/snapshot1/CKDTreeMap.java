@@ -590,7 +590,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   // it's necessary to make sure root and its left child not changed when updating the root to new gen.
   // otherwise, insertion may lost at some scenarios.
-  @Override
   public CKDTreeMap<V> snapshot() {
     while (true) {
       InternalNode<V> r = RDCSS_READ_ROOT();

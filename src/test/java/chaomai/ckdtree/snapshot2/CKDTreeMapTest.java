@@ -1,6 +1,5 @@
 package chaomai.ckdtree.snapshot2;
 
-import chaomai.ckdtree.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -67,35 +66,5 @@ public class CKDTreeMapTest {
     Assert.assertEquals(null, res1.gp);
     Assert.assertEquals(root, res1.p);
     Assert.assertEquals(root.left, res1.l);
-  }
-
-  @Test
-  public void snapshotOnEmptyCKD() throws Exception {
-    int samples = 200000;
-    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-
-    CKDTreeMap<Integer> snapshot = ckd.snapshot();
-
-    double[][] k = Utilities.generateRandomArrays(samples, 1);
-
-    for (int i = 0; i < k.length; i++) {
-      ckd.add(k[i], i);
-    }
-
-    // check snapshot
-    Assert.assertEquals(0, snapshot.size());
-
-    InternalNode snapshotRoot = snapshot.root;
-
-    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.key[0], delta);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.left.key[0], delta);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, snapshotRoot.right.key[0], delta);
-    Assert.assertTrue(snapshotRoot.left instanceof Leaf);
-    Assert.assertTrue(snapshotRoot.right instanceof Leaf);
-
-    // check ckd
-    for (double[] key : k) {
-      Assert.assertTrue(ckd.contains(key));
-    }
   }
 }

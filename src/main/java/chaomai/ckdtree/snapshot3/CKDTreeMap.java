@@ -5,6 +5,7 @@ import chaomai.ckdtree.ICKDTreeMap;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -126,6 +127,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private void helpInsert(InsertInfo<V> info) {
+    info.l.dirty = info;
+
     if (info.l == info.p.left) {
       // ichild
       if (info.p.CAS_LEFT(info.l, info.newInternal)) {
@@ -214,6 +217,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         new Node<>(sibling.key, info.p.skippedDepth + sibling.skippedDepth + 1, sibling.left,
                    sibling.right);
 
+    info.l.dirty = info;
+
     // dchild2
     if (info.p == info.gp.left) {
       if (info.gp.CAS_LEFT(info.p, ns)) {
@@ -243,6 +248,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // sibling is Leaf
       final Node<V> ns = new Node<>(sibling.key, sibling.value);
 
+      info.l.dirty = info;
+
       // dchild1
       if (info.p == info.gp.left) {
         if (info.gp.CAS_LEFT(info.p, ns)) {
@@ -259,13 +266,14 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     } else if (sibling.left != null) {
       // sibling is Internal Node
+      // unnecessary to use a wile here, which using infinite loop when inserting a parent.
       final Info sinfo = sibling.info;
 
       if (sinfo != null && sinfo.getClass() != Clean.class) {
         help(sinfo);
       } else {
-        boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
-        final Info curSinfo = info.p.info;
+        final boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+        final Info curSinfo = sibling.info;
 
         if (sresult ||
             (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
@@ -305,8 +313,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
           help(sinfo);
           return false;
         } else {
-          boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
-          final Info curSinfo = info.p.info;
+          final boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
+          final Info curSinfo = sibling.info;
 
           if (sresult ||
               (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
@@ -377,8 +385,44 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return this.size.get();
   }
 
-  @Override
-  public CKDTreeMap<V> snapshot() {
-    return null;
+  public Object[] snapshot() {
+    while (true) {
+      final Stack<Node<V>> snap = new Stack<>();
+      final Stack<Node<V>> s = new Stack<>();
+      s.push(root.left);
+
+      while (s.size() > 0) {
+        final Node<V> cur = s.pop();
+
+        if (cur.left == null) {
+          // current node is leaf
+          if (Double.isFinite(cur.key[0])) {
+            snap.push(cur);
+          }
+        } else {
+          // current node is internal node
+          s.push(cur.left);
+          s.push(cur.right);
+        }
+      }
+
+      // validate
+      boolean isRetry = false;
+      for (Node<V> l : snap) {
+        if (l.dirty != null) {
+          help(l.dirty);
+          isRetry = true;
+          break;
+        }
+      }
+
+      if (isRetry) {
+        continue;
+      }
+
+      final Object[] result = new Object[snap.size()];
+      snap.toArray(result);
+      return result;
+    }
   }
 }
