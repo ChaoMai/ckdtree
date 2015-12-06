@@ -430,7 +430,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return (InternalNode) buildRefs(root, refs);
   }
 
-  @Override
   public CKDTreeMap<V> snapshot() {
     return new CKDTreeMap<>(getSnapshot(), this.dimension);
   }

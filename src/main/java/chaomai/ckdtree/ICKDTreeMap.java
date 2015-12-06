@@ -23,8 +23,6 @@ public interface ICKDTreeMap<V> extends Iterable<Map.Entry<double[], V>> {
 
   int size();
 
-  ICKDTreeMap<V> snapshot();
-
   @Override
   String toString();
 }

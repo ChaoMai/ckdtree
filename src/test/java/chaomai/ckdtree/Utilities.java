@@ -1,8 +1,15 @@
 package chaomai.ckdtree;
 
+import org.junit.Assert;
+
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by chaomai on 11/5/15.
@@ -81,5 +88,40 @@ public class Utilities {
     }
 
     return randLength - 1;
+  }
+
+  public static void addKeysToCKD(double[][] k, ICKDTreeMap ckd) {
+    for (int i = 0; i < k.length; i++) {
+      ckd.add(k[i], i);
+    }
+  }
+
+  public static void checkKeysInCKD(double[][] k, ICKDTreeMap ckd, boolean isIn) {
+    if (isIn) {
+      for (double[] key : k) {
+        Assert.assertTrue(ckd.contains(key));
+      }
+    } else {
+      for (double[] key : k) {
+        Assert.assertFalse(ckd.contains(key));
+      }
+    }
+  }
+
+  public static void invokeAndWait(ArrayList<Callable<Integer>> taskList) {
+    ExecutorService executor = Executors.newFixedThreadPool(taskList.size());
+
+    try {
+      executor.invokeAll(taskList);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    try {
+      executor.shutdown();
+      executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 }
