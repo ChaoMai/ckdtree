@@ -4,7 +4,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -253,5 +259,60 @@ public class MiscTest {
 
     Assert.assertEquals(a.a, 1);
     //    a.a = 3;
+  }
+
+  private void stop(ExecutorService executor) {
+    try {
+      executor.shutdown();
+      executor.awaitTermination(60, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      System.err.println("termination interrupted");
+    } finally {
+      if (!executor.isTerminated()) {
+        System.err.println("killing non-finished tasks");
+      }
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testExecutor() {
+    AtomicInteger atomicInt = new AtomicInteger(0);
+
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+
+    IntStream.range(0, 1000).forEach(i -> {
+      Runnable task = () -> atomicInt.updateAndGet(n -> n + 1);
+      executor.submit(task);
+    });
+
+    stop(executor);
+
+    System.out.println(atomicInt.get());
+  }
+
+  @Test
+  public void testHashSet() {
+    HashSet<Double> set1 = new HashSet<>();
+
+    Double d1 = new Double(2.1);
+    Double d2 = new Double(2.1);
+
+    Assert.assertEquals(true, set1.add(d1));
+    Assert.assertEquals(false, set1.add(d2));
+
+    Assert.assertEquals(true, set1.contains(d1));
+    Assert.assertEquals(true, set1.contains(d2));
+
+    HashSet<double[]> set2 = new HashSet<>();
+
+    double[] da1 = {1.1, 2.1};
+    double[] da2 = {1.1, 2.1};
+
+    Assert.assertEquals(true, set2.add(da1));
+    Assert.assertEquals(true, set2.add(da2));
+
+    Assert.assertEquals(true, set2.contains(da1));
+    Assert.assertEquals(true, set2.contains(da2));
   }
 }

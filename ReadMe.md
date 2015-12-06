@@ -2,12 +2,14 @@
 
 Concurrent kdtree with snapshots.
 
-# Three methods
+# Three methods used to implement snapshot
 
-## chaomai.ckdtree.snapshot1
+## `chaomai.ckdtree.snapshot1`
 
-RDCSS and GCAS
+RDCSS and GCAS in Concurrent Tries with Efficient Non-Blocking Snapshots, Aleksandar Prokopec, Nathan G. Bronson, Phil Bagwell, Martin Odersky.
 
-## chaomai.ckdtree.snapshot2
+## `chaomai.ckdtree.snapshot2`
 
-## chaomai.ckdtree.snapshot3
+A simple method in [StaticDictionary5.java](http://www.cs.utoronto.ca/~tabrown/ksts/StaticDictionary5.java)
+
+## `chaomai.ckdtree.snapshot3`

@@ -42,7 +42,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     this(false, dimension);
   }
 
-  private InternalNode<V> RDCSS_COMPLETE(boolean abort) {
+  private InternalNode<V> RDCSS_COMPLETE(boolean isAbort) {
     while (true) {
       Object v = this.root;
 
@@ -55,7 +55,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         Node<V> expl = desc.ol;
         InternalNode<V> nv = desc.nv;
 
-        if (abort) {
+        if (isAbort) {
           if (CAS_ROOT(desc, ov)) {
             return ov;
           } else {
@@ -86,6 +86,9 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   private boolean RDCSS_ROOT(InternalNode<V> ov, Node<V> ol, InternalNode<V> nv) {
     RDCSSDescriptor<V> desc = new RDCSSDescriptor<>(ov, ol, nv);
 
+    // todo: problem here.
+    // even though a gcas read is performed to get ol, but before the following cas root finished,
+    // the update of root still may be changed.
     if (CAS_ROOT(ov, desc)) {
       RDCSS_COMPLETE(false);
       return desc.committed;
@@ -204,12 +207,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   SearchRes<V> search(double[] key) {
     while (true) {
-      Object res = searchKey(key, this.RDCSS_READ_ROOT().gen);
+      Object result = searchKey(key, this.RDCSS_READ_ROOT().gen);
 
-      if (res == SearchRes.RESTART) {
+      if (result == SearchRes.RESTART) {
         continue;
       } else {
-        return (SearchRes<V>) res;
+        return (SearchRes<V>) result;
       }
     }
   }
@@ -267,19 +270,15 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.LEFT)) {
         this.size.getAndIncrement();
       }
-
-      // unflag
-      info.p.CAS_UPDATE(iu, new Update());
-
     } else {
       // ichild
       if (info.p.GCAS(info.l, info.newInternal, this, Direction.RIGHT)) {
         this.size.getAndIncrement();
       }
-
-      // unflag
-      info.p.CAS_UPDATE(iu, new Update());
     }
+
+    // unflag
+    info.p.CAS_UPDATE(iu, new Update());
   }
 
   private boolean insert(double[] key, V value) {
@@ -423,15 +422,15 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     Direction direction;
 
-    if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
-      direction = Direction.LEFT;
-    } else {
-      direction = Direction.RIGHT;
-    }
-
     // dchild2
-    if (info.gp.GCAS(info.p, newSibling, this, direction)) {
-      this.size.getAndDecrement();
+    if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
+      if (info.gp.GCAS(info.p, newSibling, this, Direction.LEFT)) {
+        this.size.getAndDecrement();
+      }
+    } else {
+      if (info.gp.GCAS(info.p, newSibling, this, Direction.RIGHT)) {
+        this.size.getAndDecrement();
+      }
     }
 
     // unflag
@@ -459,16 +458,16 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
       Direction direction;
 
+      // dchild1
       if (info.p == info.gp.GCAS_READ_LEFT_CHILD(this)) {
-        direction = Direction.LEFT;
+        if (info.gp.GCAS(info.p, ns, this, Direction.LEFT)) {
+          this.size.getAndDecrement();
+        }
       } else {
         // since the right child may also be compared, so the root must hold a valid reference to a right child.
-        direction = Direction.RIGHT;
-      }
-
-      // dchild1
-      if (info.gp.GCAS(info.p, ns, this, direction)) {
-        this.size.getAndDecrement();
+        if (info.gp.GCAS(info.p, ns, this, Direction.RIGHT)) {
+          this.size.getAndDecrement();
+        }
       }
 
       // unflag
@@ -495,7 +494,12 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     // mark1
     Update m1u = new Update(State.MARK1, info);
-    if (info.p.CAS_UPDATE(info.pupdate, m1u)) {
+
+    boolean result = info.p.CAS_UPDATE(info.pupdate, m1u);
+
+    Update update = info.p.GET_UPDATE();
+
+    if (result || (update.state == State.MARK1 && update.info == info)) {
       // sibling of parent's child should be obtained after parent marked.
       // since before parent parked, children aren't stable.
       Node<V> sibling;
@@ -513,17 +517,14 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       } else if (sibling instanceof InternalNode) {
         // since the sibling is InternalNode, it may not be CLEAN.
         Update supdate = ((InternalNode) sibling).GET_UPDATE();
+        Update m2u = new Update(State.MARK2, info);
 
-        if (supdate.state == State.CLEAN) {
-          Update m2u = new Update(State.MARK2, info);
+        boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-          if (((InternalNode) sibling).CAS_UPDATE(supdate, m2u)) {
-            helpMarked2(m2u);
-            return true;
-          } else {
-            help(supdate);
-            return false;
-          }
+        if ((supdate.state == State.CLEAN && sresult) ||
+            (supdate.state == State.MARK2 && update.info == info)) {
+          helpMarked2(m2u);
+          return true;
         } else {
           help(supdate);
           return false;
@@ -532,7 +533,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         throw new RuntimeException("Should not happen");
       }
     } else {
-      Update update = info.p.GET_UPDATE();
       help(update);
 
       // backtrack cas
@@ -588,10 +588,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return this.size.get();
   }
 
-  // 1.
   // it's necessary to make sure root and its left child not changed when updating the root to new gen.
   // otherwise, insertion may lost at some scenarios.
-  @Override
   public CKDTreeMap<V> snapshot() {
     while (true) {
       InternalNode<V> r = RDCSS_READ_ROOT();
@@ -608,7 +606,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  @Override
   public CKDTreeMap<V> readOnlySnapshot() {
     if (isReadOnly()) {
       return this;
