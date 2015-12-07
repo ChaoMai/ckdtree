@@ -46,9 +46,9 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     while (true) {
       Object v = this.root;
 
-      if (v instanceof InternalNode) {
+      if (v.getClass() == InternalNode.class) {
         return (InternalNode<V>) v;
-      } else if (v instanceof RDCSSDescriptor) {
+      } else if (v.getClass() == RDCSSDescriptor.class) {
         RDCSSDescriptor<V> desc = (RDCSSDescriptor<V>) v;
 
         InternalNode<V> ov = desc.ov;
@@ -104,7 +104,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   InternalNode<V> RDCSS_READ_ROOT(boolean abort) {
     Object r = this.root;
 
-    if (r instanceof InternalNode) {
+    if (r.getClass() == InternalNode.class) {
       return (InternalNode<V>) r;
     } else {
       return RDCSS_COMPLETE(abort);
@@ -157,7 +157,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     Node<V> cur = this.RDCSS_READ_ROOT();
 
-    while (cur instanceof InternalNode) {
+    while (cur.getClass() == InternalNode.class) {
       // continue searching
       gp = p;
       gpupdate = pupdate;
@@ -170,7 +170,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         Node<V> left = cur.GCAS_READ_LEFT_CHILD(this);
 
         // only perform GCAS on InternalNode
-        if (left instanceof InternalNode) {
+        if (left.getClass() == InternalNode.class) {
           // use startGen instead of root's gen, since the gen of root may change while perform
           // searching. if the gen of root is used, searchKey will generate a branch at some internal
           // node after the root's gen is changed.
@@ -188,7 +188,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         // if right child are InternalNode, then check their generation.
         Node<V> right = cur.GCAS_READ_RIGHT_CHILD(this);
 
-        if (right instanceof InternalNode) {
+        if (right.getClass() == InternalNode.class) {
           if (right.gen != startGen) {
             cur.GCAS(right, ((InternalNode<V>) right).renewed(startGen, this), this,
                      Direction.RIGHT);
@@ -355,7 +355,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         while (!parents.isEmpty()) {
           cur = parents.pop();
 
-          if (cur instanceof Leaf) {
+          if (cur.getClass() == Leaf.class) {
             if (Double.isFinite(cur.key[0])) {
               return entry((Leaf<V>) cur);
             }
@@ -456,7 +456,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     // is only one thread.
     // when multiple threads exist, other find marked parent won't know the type of sibling.
 
-    if (sibling instanceof Leaf) {
+    if (sibling.getClass() == Leaf.class) {
       Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
       Direction direction;
@@ -476,7 +476,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // unflag
       info.gp.CAS_UPDATE(info.gp.GET_UPDATE(), new Update());
 
-    } else if (sibling instanceof InternalNode) {
+    } else if (sibling.getClass() == InternalNode.class) {
       Update supdate = ((InternalNode) sibling).GET_UPDATE();
 
       if (supdate.state == State.CLEAN) {
@@ -514,10 +514,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       }
 
       // check sibling
-      if (sibling instanceof Leaf) {
+      if (sibling.getClass() == Leaf.class) {
         helpMarked1(m1u);
         return true;
-      } else if (sibling instanceof InternalNode) {
+      } else if (sibling.getClass() == InternalNode.class) {
         // since the sibling is InternalNode, it may not be CLEAN.
         Update supdate = ((InternalNode) sibling).GET_UPDATE();
         Update m2u = new Update(State.MARK2, info);

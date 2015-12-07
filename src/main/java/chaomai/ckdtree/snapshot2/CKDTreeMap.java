@@ -63,7 +63,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     Node cur = this.root;
 
-    while (cur instanceof InternalNode) {
+    while (cur.getClass() == InternalNode.class) {
       gp = p;
       gpupdate = pupdate;
       p = (InternalNode) cur;
@@ -307,7 +307,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       sibling = info.p.left;
     }
 
-    if (sibling instanceof Leaf) {
+    if (sibling.getClass() == Leaf.class) {
       Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
       // dchild1
@@ -324,7 +324,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // unflag
       info.gp.CAS_UPDATE(info.gp.update, new Update());
 
-    } else if (sibling instanceof InternalNode) {
+    } else if (sibling.getClass() == InternalNode.class) {
       Update supdate = ((InternalNode) sibling).update;
 
       if (supdate.state == State.CLEAN) {
@@ -363,10 +363,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       }
 
       // check sibling
-      if (sibling instanceof Leaf) {
+      if (sibling.getClass() == Leaf.class) {
         helpMarked1(m1u);
         return true;
-      } else if (sibling instanceof InternalNode) {
+      } else if (sibling.getClass() == InternalNode.class) {
         Update supdate = ((InternalNode) sibling).update;
 
         if (supdate.state == State.CLEAN) {
@@ -442,7 +442,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private void readRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return;
     }
 
@@ -454,7 +454,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private boolean checkRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return true;
     }
 
@@ -468,7 +468,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private Node buildRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return node;
     }
 

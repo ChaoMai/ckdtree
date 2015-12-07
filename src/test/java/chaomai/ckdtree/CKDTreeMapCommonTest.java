@@ -1,14 +1,14 @@
 package chaomai.ckdtree;
 
-//import chaomai.ckdtree.snapshot1.CKDTreeMap;
-
-import chaomai.ckdtree.snapshot2.CKDTreeMap;
+import chaomai.ckdtree.snapshot1.CKDTreeMap;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Callable;
+
+//import chaomai.ckdtree.snapshot2.CKDTreeMap;
 
 //import chaomai.ckdtree.snapshot3.CKDTreeMap;
 

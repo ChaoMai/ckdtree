@@ -69,7 +69,7 @@ abstract class Node<V> {
           return n;
         }
 
-        if (prev instanceof FailedNode) {
+        if (prev.getClass() == FailedNode.class) {
           FailedNode<V> fn = (FailedNode<V>) prev;
           if (direction == Direction.LEFT) {
             if (CAS_LEFT(n, fn.prev)) {
@@ -86,7 +86,7 @@ abstract class Node<V> {
               continue;
             }
           }
-        } else if (prev instanceof InternalNode || prev instanceof Leaf) {
+        } else if (prev.getClass() == InternalNode.class || prev.getClass() == Leaf.class) {
           InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
 
           if (root.gen == this.gen && !ckd.isReadOnly()) {
