@@ -2,10 +2,7 @@ package chaomai.ckdtree.snapshot3;
 
 import chaomai.ckdtree.ICKDTreeMap;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -195,12 +192,35 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public Iterator<Map.Entry<double[], V>> iterator() {
-    return null;
+    ArrayList<Map.Entry<double[], V>> snap = snapshot();
+
+    return new Iterator<Map.Entry<double[], V>>() {
+      private int index = 0;
+
+      @Override
+      public boolean hasNext() {
+        return index != snap.size();
+      }
+
+      @Override
+      public Map.Entry<double[], V> next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+
+        return snap.get(index++);
+      }
+    };
   }
 
   @Override
-  public V get(Object key) {
-    return null;
+  public V get(double[] key) {
+    if (contains(key)) {
+      final SearchRes sr = search(key);
+      return (V) sr.l.value;
+    } else {
+      return null;
+    }
   }
 
   // sibling is InternalNode
@@ -385,7 +405,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return this.size.get();
   }
 
-  public Object[] snapshot() {
+  public ArrayList<Map.Entry<double[], V>> snapshot() {
     while (true) {
       final Stack<Node<V>> snap = new Stack<>();
       final Stack<Node<V>> s = new Stack<>();
@@ -420,9 +440,32 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         continue;
       }
 
-      final Object[] result = new Object[snap.size()];
-      snap.toArray(result);
+      ArrayList<Map.Entry<double[], V>> result = new ArrayList<>();
+      for (Node<V> l : snap) {
+        result.add(entry(l));
+      }
+
       return result;
     }
+  }
+
+  private Map.Entry<double[], V> entry(Node<V> cur) {
+    return new Map.Entry<double[], V>() {
+      @Override
+      public double[] getKey() {
+        return cur.key;
+      }
+
+      @Override
+      public V getValue() {
+        return cur.value;
+      }
+
+      // the value of cur is final
+      @Override
+      public V setValue(V v) {
+        return null;
+      }
+    };
   }
 }

@@ -17,7 +17,7 @@ public interface ICKDTreeMap<V> extends Iterable<Map.Entry<double[], V>> {
   @Override
   Iterator<Map.Entry<double[], V>> iterator();
 
-  V get(Object key);
+  V get(double[] key);
 
   boolean remove(double[] key);
 
