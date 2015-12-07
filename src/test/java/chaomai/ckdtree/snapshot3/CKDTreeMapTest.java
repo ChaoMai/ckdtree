@@ -81,7 +81,7 @@ public class CKDTreeMapTest {
   private void snapshotOnTreeWithMultithreadUpdate()
       throws ExecutionException, InterruptedException {
     int samples = 20000;
-    int dimension = 10;
+    int dimension = 20;
     int threads = 10;
 
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
@@ -173,7 +173,7 @@ public class CKDTreeMapTest {
       ArrayList<Map.Entry<double[], Integer>> snap = future.get();
 
       if (snap != null) {
-        // all snapshot() will be delayed until all update finished.
+        // all snapshot() will be also delayed until all updates finished.
         Assert.assertEquals(samples, snap.size());
 
         for (Map.Entry<double[], Integer> e : snap) {
