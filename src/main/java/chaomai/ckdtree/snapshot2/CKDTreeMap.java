@@ -2,10 +2,7 @@ package chaomai.ckdtree.snapshot2;
 
 import chaomai.ckdtree.ICKDTreeMap;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -18,9 +15,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   private final int dimension;
   private final AtomicInteger size = new AtomicInteger();
 
-  private CKDTreeMap(InternalNode root, int dimension) {
+  private CKDTreeMap(InternalNode root, int dimension, int size) {
     this.root = root;
     this.dimension = dimension;
+    this.size.set(size);
   }
 
   public CKDTreeMap(int dimension) {
@@ -196,12 +194,74 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public Iterator<Map.Entry<double[], V>> iterator() {
-    return null;
+    Stack<Node> parents = new Stack<>();
+    parents.push(this.root);
+
+    return new Iterator<Map.Entry<double[], V>>() {
+      @Override
+      public boolean hasNext() {
+        return !parents.isEmpty();
+      }
+
+      @Override
+      public Map.Entry<double[], V> next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+
+        Node cur;
+
+        while (!parents.isEmpty()) {
+          cur = parents.pop();
+
+          if (cur.getClass() == Leaf.class) {
+            if (Double.isFinite(cur.key[0])) {
+              return entry((Leaf<V>) cur);
+            }
+          } else {
+            if (((InternalNode) cur).left != null) {
+              parents.push(((InternalNode) cur).left);
+            }
+
+            if (((InternalNode) cur).right != null) {
+              parents.push(((InternalNode) cur).right);
+            }
+          }
+        }
+
+        throw new RuntimeException("Should not happen");
+      }
+
+      private Map.Entry<double[], V> entry(Leaf<V> cur) {
+        return new Map.Entry<double[], V>() {
+          @Override
+          public double[] getKey() {
+            return cur.key;
+          }
+
+          @Override
+          public V getValue() {
+            return cur.value;
+          }
+
+          // the value of cur is final
+          @Override
+          public V setValue(V v) {
+            return null;
+          }
+        };
+      }
+    };
   }
 
   @Override
-  public V get(Object key) {
-    return null;
+  public V get(double[] key) {
+    if (contains(key)) {
+      final SearchRes sr = search(key);
+      return (V) sr.l.value;
+    } else {
+      return null;
+    }
   }
 
   // sibling is InternalNode
@@ -376,7 +436,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return delete(key);
   }
 
-  // todo: snapshot?
   @Override
   public int size() {
     return this.size.get();
@@ -430,7 +489,26 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return (InternalNode) buildRefs(root, refs);
   }
 
+  private int sequentialSize(Node node) {
+    if (node.getClass() == Leaf.class) {
+      if (Double.isFinite(node.key[0])) {
+        return 1;
+      } else {
+        return 0;
+      }
+    } else {
+      return sequentialSize(((InternalNode) node).left) +
+             sequentialSize(((InternalNode) node).right);
+    }
+  }
+
   public CKDTreeMap<V> snapshot() {
-    return new CKDTreeMap<>(getSnapshot(), this.dimension);
+    while (true) {
+      InternalNode newRoot = getSnapshot();
+
+      if (newRoot != null) {
+        return new CKDTreeMap<>(getSnapshot(), this.dimension, sequentialSize(newRoot));
+      }
+    }
   }
 }

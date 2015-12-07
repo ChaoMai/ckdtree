@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -39,9 +40,9 @@ public class CKDTreeMapTest {
 
   private void snapshotOnEmptyTree() {
     CKDTreeMap<Integer> ckd = new CKDTreeMap<>(1);
-    Object[] snap = ckd.snapshot();
+    ArrayList<Map.Entry<double[], Integer>> snap = ckd.snapshot();
 
-    Assert.assertEquals(0, snap.length);
+    Assert.assertEquals(0, snap.size());
   }
 
   private void snapshotOnTreeWithMultipleDimension() {
@@ -67,14 +68,13 @@ public class CKDTreeMapTest {
       System.out.println("snapshot");
     }
 
-    Object[] snap = ckd.snapshot();
+    ArrayList<Map.Entry<double[], Integer>> snap = ckd.snapshot();
 
-    Assert.assertEquals(samples, snap.length);
+    Assert.assertEquals(samples, snap.size());
 
-    for (Object o : snap) {
-      Node<Integer> l = (Node<Integer>) o;
-      Assert.assertTrue(ckd.contains(l.key));
-      Assert.assertTrue(ckd.contains(k[l.value]));
+    for (Map.Entry<double[], Integer> e : snap) {
+      Assert.assertTrue(ckd.contains(e.getKey()));
+      Assert.assertTrue(ckd.contains(k[e.getValue()]));
     }
   }
 
@@ -122,7 +122,7 @@ public class CKDTreeMapTest {
     Assert.assertEquals(samples, ckd.size());
 
     // delete k1, add k2 and snapshot
-    ArrayList<Callable<Object[]>> taskList2 = new ArrayList<>();
+    ArrayList<Callable<ArrayList<Map.Entry<double[], Integer>>>> taskList2 = new ArrayList<>();
 
     if (isVerbose) {
       System.out.println("deleting, adding and getting snapshot");
@@ -160,7 +160,8 @@ public class CKDTreeMapTest {
 
     ExecutorService executor = Executors.newFixedThreadPool(taskList2.size());
 
-    Collection<Future<Object[]>> futures = executor.invokeAll(taskList2);
+    Collection<Future<ArrayList<Map.Entry<double[], Integer>>>> futures =
+        executor.invokeAll(taskList2);
     executor.shutdown();
     executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
@@ -168,17 +169,16 @@ public class CKDTreeMapTest {
     Utilities.checkKeysInCKD(k2, ckd, true);
     Assert.assertEquals(samples, ckd.size());
 
-    for (Future<Object[]> future : futures) {
-      Object[] snap = future.get();
+    for (Future<ArrayList<Map.Entry<double[], Integer>>> future : futures) {
+      ArrayList<Map.Entry<double[], Integer>> snap = future.get();
 
       if (snap != null) {
         // all snapshot() will be delayed until all update finished.
-        Assert.assertEquals(samples, snap.length);
+        Assert.assertEquals(samples, snap.size());
 
-        for (Object o : snap) {
-          Node<Integer> l = (Node<Integer>) o;
-          Assert.assertTrue(ckd.contains(l.key));
-          Assert.assertTrue(ckd.contains(k2[l.value]));
+        for (Map.Entry<double[], Integer> e : snap) {
+          Assert.assertTrue(ckd.contains(e.getKey()));
+          Assert.assertTrue(ckd.contains(k2[e.getValue()]));
         }
       }
     }
@@ -189,7 +189,6 @@ public class CKDTreeMapTest {
     if (isVerbose) {
       System.out.println("\nsnapshot On Empty Tree");
     }
-
     snapshotOnEmptyTree();
 
     if (isVerbose) {
