@@ -2,15 +2,15 @@ package chaomai.ckdtree;
 
 //import chaomai.ckdtree.snapshot1.CKDTreeMap;
 
-//import chaomai.ckdtree.snapshot2.CKDTreeMap;
-
-import chaomai.ckdtree.snapshot3.CKDTreeMap;
+import chaomai.ckdtree.snapshot2.CKDTreeMap;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Callable;
+
+//import chaomai.ckdtree.snapshot3.CKDTreeMap;
 
 /**
  * Created by chaomai on 11/26/15.
@@ -517,8 +517,40 @@ public class CKDTreeMapCommonTest {
   }
 
   @Test
+  public void testGet() throws Exception {
+    int samples = 200000;
+    int dimension = 20;
+    CKDTreeMap<Integer> ckd = new CKDTreeMap<>(dimension);
+
+    if (isVerbose) {
+      System.out.println("generating keys");
+    }
+
+    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+
+    if (isVerbose) {
+      System.out.println("adding");
+    }
+
+    Utilities.addKeysToCKD(k, ckd);
+    Utilities.checkKeysInCKD(k, ckd, true);
+    Assert.assertEquals(samples, ckd.size());
+
+    if (isVerbose) {
+      System.out.println("getting");
+    }
+
+    for (int i = 0; i < samples; ++i) {
+      Assert.assertEquals((Integer) i, ckd.get(k[i]));
+    }
+
+    double[] nonKey = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    Assert.assertEquals(null, ckd.get(nonKey));
+  }
+
+  @Test
   public void testSpecial() {
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 1; ++i) {
       try {
         testDelete();
       } catch (Exception e) {

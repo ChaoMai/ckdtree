@@ -349,8 +349,6 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
           throw new NoSuchElementException();
         }
 
-        V key;
-
         // since the ckd now is readonly, just directly access two child fields.
         Node<V> cur;
 
@@ -358,7 +356,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
           cur = parents.pop();
 
           if (cur instanceof Leaf) {
-            if (!Double.isInfinite(cur.key[0])) {
+            if (Double.isFinite(cur.key[0])) {
               return entry((Leaf<V>) cur);
             }
           } else {
@@ -398,8 +396,13 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   @Override
-  public V get(Object key) {
-    return null;
+  public V get(double[] key) {
+    if (contains(key)) {
+      final SearchRes sr = search(key);
+      return (V) sr.l.value;
+    } else {
+      return null;
+    }
   }
 
   // sibling is InternalNode
