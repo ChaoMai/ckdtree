@@ -12,8 +12,6 @@ class Node<V> {
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
   private static final AtomicReferenceFieldUpdater<Node, Info> infoUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Info.class, "info");
-  private static final AtomicReferenceFieldUpdater<Node, Info> dirtyUpdater =
-      AtomicReferenceFieldUpdater.newUpdater(Node.class, Info.class, "dirty");
   final double[] key;
   final V value;
   final int skippedDepth;

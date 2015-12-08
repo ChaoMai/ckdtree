@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> implements ICKDTreeMap<V> {
+public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   final InternalNode root;
   private final int dimension;
   private final AtomicInteger size = new AtomicInteger();
@@ -509,5 +509,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         return new CKDTreeMap<>(getSnapshot(), this.dimension, sequentialSize(newRoot));
       }
     }
+  }
+
+  @Override
+  public CKDTreeMap<V> clone() {
+    return snapshot();
   }
 }
