@@ -373,8 +373,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
           Update m2u = new Update(State.MARK2, info);
           boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-          if ((supdate.state == State.CLEAN && sresult) ||
-              (supdate.state == State.MARK2 && supdate.info == info)) {
+          if (sresult || (supdate.state == State.MARK2 && supdate.info == info)) {
             helpMarked2(m2u);
             return true;
           } else {

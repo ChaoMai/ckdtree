@@ -520,20 +520,22 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       } else if (sibling.getClass() == InternalNode.class) {
         // since the sibling is InternalNode, it may not be CLEAN.
         Update supdate = ((InternalNode) sibling).GET_UPDATE();
-        Update m2u = new Update(State.MARK2, info);
 
-        boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
+        if (supdate.state == State.CLEAN) {
+          Update m2u = new Update(State.MARK2, info);
+          boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-        if ((supdate.state == State.CLEAN && sresult) ||
-            (supdate.state == State.MARK2 && update.info == info)) {
-          helpMarked2(m2u);
-          return true;
+          if (sresult || (supdate.state == State.MARK2 && update.info == info)) {
+            helpMarked2(m2u);
+            return true;
+          } else {
+            help(((InternalNode) sibling).GET_UPDATE());
+            return false;
+          }
         } else {
           help(supdate);
           return false;
         }
-      } else {
-        throw new RuntimeException("Should not happen");
       }
     } else {
       help(update);
@@ -543,6 +545,8 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
       return false;
     }
+
+    throw new RuntimeException("Should not happen");
   }
 
   boolean delete(double[] key) {
