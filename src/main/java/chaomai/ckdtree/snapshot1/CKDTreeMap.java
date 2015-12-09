@@ -3,7 +3,7 @@ package chaomai.ckdtree.snapshot1;
 import chaomai.ckdtree.ICKDTreeMap;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Created by chaomai on 12/2/15.
@@ -11,9 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings({"unused"})
 public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
-  final Node<V> root;
+  private static final AtomicReferenceFieldUpdater<CKDTreeMap, Object> rootUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(CKDTreeMap.class, Object.class, "root");
   private final int dimension;
-  private final AtomicInteger size = new AtomicInteger();
+  private volatile Object root;
 
   private CKDTreeMap(Node<V> root, int dimension) {
     this.root = root;
@@ -29,7 +30,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       key[i] = Double.POSITIVE_INFINITY;
     }
 
-    this.root = new Node<>(key, 0, new Node<>(key, null), new Node<>(key, null));
+    this.root = new Node<>(key, 0, new Node<>(key, null), new Node<>(key, null), new Gen());
   }
 
   private boolean keyEqual(double[] k1, double[] k2) {
@@ -52,7 +53,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private SearchRes<V> search(double[] key) {
+  private Object searchKey(double[] key, Gen startGen) {
     Node<V> gp = null;
     Info gpinfo = null;
     Node<V> p = null;
@@ -60,7 +61,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     Node<V> l;
 
     int depth = 0;
-    Node<V> cur = this.root;
+    Node<V> cur = RDCSS_READ_ROOT();
 
     while (cur.left != null) {
       gp = p;
@@ -68,9 +69,23 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       depth += p.skippedDepth;
 
       if (keyCompare(key, cur.key, depth++) < 0) {
-        cur = p.left;
+        Node<V> left = cur.GCAS_READ_LEFT(this);
+
+        if (left.left != null && left.gen != startGen) {
+          cur.GCAS_LEFT(left, left.renew(startGen, this), this);
+          return SearchRes.RESTART;
+        }
+
+        cur = p.GCAS_READ_LEFT(this);
       } else {
-        cur = p.right;
+        Node<V> right = cur.GCAS_READ_RIGHT(this);
+
+        if (right.left != null && right.gen != startGen) {
+          cur.GCAS_RIGHT(right, right.renew(startGen, this), this);
+          return SearchRes.RESTART;
+        }
+
+        cur = p.GCAS_READ_RIGHT(this);
       }
     }
 
@@ -84,6 +99,16 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     l = cur;
 
     return new SearchRes<>(gp, gpinfo, p, pinfo, l, depth);
+  }
+
+  private SearchRes<V> search(double[] key) {
+    while (true) {
+      Object result = searchKey(key, RDCSS_READ_ROOT().gen);
+
+      if (result != SearchRes.RESTART) {
+        return (SearchRes<V>) result;
+      }
+    }
   }
 
   private Node<V> createSubTree(double[] k, V v, Node<V> l, int depth) {
@@ -108,7 +133,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       right = new Node<>(k, v);
     }
 
-    return new Node<>(maxKey, skip, left, right);
+    return new Node<>(maxKey, skip, left, right, RDCSS_READ_ROOT().gen);
   }
 
   private void help(Info info) {
@@ -123,21 +148,24 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private void helpInsert(InsertInfo<V> info) {
+  private boolean helpInsert(InsertInfo<V> info) {
+    final Object result;
+
     if (info.l == info.p.left) {
       // ichild
-      if (info.p.CAS_LEFT(info.l, info.newInternal)) {
-        this.size.getAndIncrement();
-      }
+      result = info.p.GCAS_LEFT(info.l, info.newInternal, this);
     } else {
       // ichild
-      if (info.p.CAS_RIGHT(info.l, info.newInternal)) {
-        this.size.getAndIncrement();
-      }
+      result = info.p.GCAS_RIGHT(info.l, info.newInternal, this);
     }
 
-    // unflag
-    info.p.CAS_INFO(info, new Clean());
+    if (result == Gen.GenFailed) {
+      return false;
+    } else {
+      // unflag
+      info.p.CAS_INFO(info, new Clean());
+      return true;
+    }
   }
 
   private boolean insert(double[] key, V value) {
@@ -163,8 +191,9 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       final InsertInfo<V> info = new InsertInfo<>(sr.p, newInternal, sr.l);
 
       if (sr.p.CAS_INFO(sr.pinfo, info)) {
-        helpInsert(info);
-        return true;
+        if (helpInsert(info)) {
+          return true;
+        }
       } else {
         help(sr.p.info);
       }
@@ -175,7 +204,6 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   public boolean add(double[] key, V value) {
     return insert(key, value);
   }
-
 
   @Override
   public void clear() {
@@ -190,9 +218,9 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public Iterator<Map.Entry<double[], V>> iterator() {
-    // todo: use snapshots.
+    CKDTreeMap<V> snap = snapshot();
     Stack<Node<V>> parents = new Stack<>();
-    parents.push(this.root);
+    parents.push(snap.RDCSS_READ_ROOT());
 
     return new Iterator<Map.Entry<double[], V>>() {
       @Override
@@ -260,7 +288,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   // sibling is InternalNode
-  private void helpMarked2(DeleteInfo<V> info) {
+  private boolean helpMarked2(DeleteInfo<V> info) {
     final Node<V> sibling;
 
     if (info.l == info.p.left) {
@@ -271,25 +299,29 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     final Node<V> ns =
         new Node<>(sibling.key, info.p.skippedDepth + sibling.skippedDepth + 1, sibling.left,
-                   sibling.right);
+                   sibling.right, sibling.gen);
 
-    // dchild2
+    final Object result;
+
     if (info.p == info.gp.left) {
-      if (info.gp.CAS_LEFT(info.p, ns)) {
-        this.size.getAndDecrement();
-      }
+      //dchild2
+      result = info.gp.GCAS_LEFT(info.p, ns, this);
     } else {
-      if (info.gp.CAS_RIGHT(info.p, ns)) {
-        this.size.getAndDecrement();
-      }
+      //dchild2
+      result = info.gp.GCAS_RIGHT(info.p, ns, this);
     }
 
-    // unflag
-    info.gp.CAS_INFO(info, new Clean());
+    if (result == Gen.GenFailed) {
+      return false;
+    } else {
+      // unflag
+      info.gp.CAS_INFO(info, new Clean());
+      return true;
+    }
   }
 
   // sibling may be a leaf
-  private void helpMarked1(DeleteInfo<V> info) {
+  private boolean helpMarked1(DeleteInfo<V> info) {
     final Node<V> sibling;
 
     if (info.l == info.p.left) {
@@ -302,19 +334,23 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // sibling is Leaf
       final Node<V> ns = new Node<>(sibling.key, sibling.value);
 
-      // dchild1
+      final Object result;
+
       if (info.p == info.gp.left) {
-        if (info.gp.CAS_LEFT(info.p, ns)) {
-          this.size.getAndDecrement();
-        }
+        // dchild1
+        result = info.gp.GCAS_LEFT(info.p, ns, this);
       } else {
-        if (info.gp.CAS_RIGHT(info.p, ns)) {
-          this.size.getAndDecrement();
-        }
+        //dchild2
+        result = info.gp.GCAS_RIGHT(info.p, ns, this);
       }
 
-      // unflag
-      info.gp.CAS_INFO(info, new Clean());
+      if (result == Gen.GenFailed) {
+        return false;
+      } else {
+        // unflag
+        info.gp.CAS_INFO(info, new Clean());
+        return true;
+      }
 
     } else if (sibling.left != null) {
       // sibling is Internal Node
@@ -334,7 +370,11 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
           help(sibling.info);
         }
       }
+
+      return false;
     }
+
+    throw new RuntimeException("Should not happen");
   }
 
   private boolean helpDelete(DeleteInfo<V> info) {
@@ -355,8 +395,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // check sibling
       if (sibling.left == null) {
         // sibling is Leaf
-        helpMarked1(info);
-        return true;
+        return helpMarked1(info);
       } else if (sibling.left != null) {
         // sibling is Internal Node
         final Info sinfo = sibling.info;
@@ -370,8 +409,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
           if (sresult ||
               (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
-            helpMarked2(info);
-            return true;
+            return helpMarked2(info);
           } else {
             help(sibling.info);
             return false;
@@ -434,11 +472,104 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public int size() {
-    return this.size.get();
+    // todo: the AtomicInteger size doesn't work well as snapshot2 and snapshot3
+    // maybe caused by gcas and gcas_read.
+    // any better solution?
+    return sequentialSize(RDCSS_READ_ROOT());
+  }
+
+  private int sequentialSize(Node node) {
+    if (node.left == null) {
+      if (Double.isFinite(node.key[0])) {
+        return 1;
+      } else {
+        return 0;
+      }
+    } else {
+      return sequentialSize(node.left) + sequentialSize(node.right);
+    }
+  }
+
+  private boolean CAS_ROOT(final Object or, final Object desc) {
+    return rootUpdater.compareAndSet(this, or, desc);
+  }
+
+  private Node<V> RDCSS_Complete(final boolean abort) {
+    final Object r = this.root;
+
+    if (r.getClass() == Node.class) {
+      return (Node<V>) r;
+    } else if (r.getClass() == RDCSSDescriptor.class) {
+      final RDCSSDescriptor<V> desc = (RDCSSDescriptor<V>) r;
+      final Node<V> or = desc.or;
+      final Node<V> ol = desc.ol;
+      final Node<V> nr = desc.nr;
+
+      if (abort) {
+        if (CAS_ROOT(desc, or)) {
+          return or;
+        } else {
+          return RDCSS_Complete(abort);
+        }
+      } else {
+        Node<V> oldLeaf = or.GCAS_READ_LEFT(this);
+
+        if (oldLeaf == ol) {
+          if (CAS_ROOT(desc, nr)) {
+            desc.committed = true;
+            return nr;
+          } else {
+            return RDCSS_Complete(abort);
+          }
+        } else {
+          if (CAS_ROOT(desc, or)) {
+            return or;
+          } else {
+            return RDCSS_Complete(abort);
+          }
+        }
+      }
+    }
+
+    throw new RuntimeException("Should not happen");
+  }
+
+  private boolean RDCSS_ROOT(final Node<V> or, final Node<V> ol, final Node<V> nr) {
+    final RDCSSDescriptor<V> desc = new RDCSSDescriptor<>(or, ol, nr);
+
+    if (CAS_ROOT(or, desc)) {
+      RDCSS_Complete(false);
+      return desc.committed;
+    } else {
+      return false;
+    }
+  }
+
+  Node<V> RDCSS_READ_ROOT() {
+    return RDCSS_READ_ROOT(false);
+  }
+
+  Node<V> RDCSS_READ_ROOT(final boolean abort) {
+    final Object r = this.root;
+
+    if (r.getClass() == Node.class) {
+      return (Node<V>) r;
+    } else if (r.getClass() == RDCSSDescriptor.class) {
+      return RDCSS_Complete(abort);
+    }
+
+    throw new RuntimeException("Should not happen");
   }
 
   public CKDTreeMap<V> snapshot() {
-    return null;
+    final Node<V> or = RDCSS_READ_ROOT();
+    final Node<V> ol = or.GCAS_READ_LEFT(this);
+
+    if (RDCSS_ROOT(or, ol, or.renew(new Gen(), this))) {
+      return new CKDTreeMap<>(or.renew(new Gen(), this), this.dimension);
+    } else {
+      return snapshot();
+    }
   }
 
   @Override

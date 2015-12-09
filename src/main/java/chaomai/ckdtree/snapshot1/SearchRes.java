@@ -4,6 +4,7 @@ package chaomai.ckdtree.snapshot1;
  * Created by chaomai on 12/2/15.
  */
 class SearchRes<V> {
+  static final Object RESTART = new Object();
   final Node<V> gp;
   final Info gpinfo;
   final Node<V> p;

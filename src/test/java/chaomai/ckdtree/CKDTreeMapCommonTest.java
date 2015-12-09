@@ -552,6 +552,7 @@ public class CKDTreeMapCommonTest {
   public void testSpecial() {
     for (int i = 0; i < 5; ++i) {
       try {
+        testMultithreadAdd();
         testDelete();
       } catch (Exception e) {
         e.printStackTrace();
