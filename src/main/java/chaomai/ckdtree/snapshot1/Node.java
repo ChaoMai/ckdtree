@@ -30,7 +30,6 @@ class Node<V> {
     this.skippedDepth = skippedDepth;
     this.left = left;
     this.right = right;
-    this.info = null;
     this.prev = null;
     this.gen = gen;
   }
@@ -44,16 +43,20 @@ class Node<V> {
     this(key, null, skippedDepth, left, right, gen);
   }
 
-  private boolean CAS_LEFT(final Node<V> old, final Node<V> n) {
+  boolean CAS_LEFT(final Node<V> old, final Node<V> n) {
     return leftUpdater.compareAndSet(this, old, n);
   }
 
-  private boolean CAS_RIGHT(final Node<V> old, final Node<V> n) {
+  boolean CAS_RIGHT(final Node<V> old, final Node<V> n) {
     return rightUpdater.compareAndSet(this, old, n);
   }
 
   boolean CAS_INFO(final Info old, final Info n) {
     return infoUpdater.compareAndSet(this, old, n);
+  }
+
+  void WRITE_INFO(final Info n) {
+    infoUpdater.set(this, n);
   }
 
   private boolean CAS_PREV(final Node<V> old, final Node<V> n) {
@@ -80,7 +83,7 @@ class Node<V> {
         if (CAS_LEFT(n, fn.prev)) {
           return fn.prev;
         } else {
-          GCAS_LEFT_Complete(this.left, ckd);
+          return GCAS_LEFT_Complete(this.left, ckd);
         }
       } else {
         // normal node
@@ -98,8 +101,6 @@ class Node<V> {
         }
       }
     }
-
-    throw new RuntimeException("Should not happen");
   }
 
   Object GCAS_LEFT(final Node<V> old, final Node<V> n, CKDTreeMap<V> ckd) {
@@ -131,7 +132,7 @@ class Node<V> {
         if (CAS_RIGHT(n, fn.prev)) {
           return fn.prev;
         } else {
-          GCAS_RIGHT_Complete(this.right, ckd);
+          return GCAS_RIGHT_Complete(this.right, ckd);
         }
       } else {
         // normal node
@@ -149,8 +150,6 @@ class Node<V> {
         }
       }
     }
-
-    throw new RuntimeException("Should not happen");
   }
 
   Object GCAS_RIGHT(final Node<V> old, final Node<V> n, CKDTreeMap<V> ckd) {

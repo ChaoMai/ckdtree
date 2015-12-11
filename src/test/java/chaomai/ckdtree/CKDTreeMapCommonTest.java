@@ -550,7 +550,7 @@ public class CKDTreeMapCommonTest {
 
   @Test
   public void testSpecial() {
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 500; ++i) {
       try {
         testMultithreadAdd();
         testDelete();

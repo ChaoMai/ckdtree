@@ -159,11 +159,12 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       result = info.p.GCAS_RIGHT(info.l, info.newInternal, this);
     }
 
+    // unflag
+    info.p.CAS_INFO(info, new Clean());
+
     if (result == Gen.GenFailed) {
       return false;
     } else {
-      // unflag
-      info.p.CAS_INFO(info, new Clean());
       return true;
     }
   }
@@ -311,11 +312,14 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
       result = info.gp.GCAS_RIGHT(info.p, ns, this);
     }
 
+    // unflag
+    info.gp.CAS_INFO(info, new Clean());
+
     if (result == Gen.GenFailed) {
+      info.p.WRITE_INFO(new Clean());
+      sibling.WRITE_INFO(new Clean());
       return false;
     } else {
-      // unflag
-      info.gp.CAS_INFO(info, new Clean());
       return true;
     }
   }
@@ -344,11 +348,13 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
         result = info.gp.GCAS_RIGHT(info.p, ns, this);
       }
 
+      // unflag
+      info.gp.CAS_INFO(info, new Clean());
+
       if (result == Gen.GenFailed) {
+        info.p.WRITE_INFO(new Clean());
         return false;
       } else {
-        // unflag
-        info.gp.CAS_INFO(info, new Clean());
         return true;
       }
 
@@ -359,19 +365,19 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
       if (sinfo != null && sinfo.getClass() != Clean.class) {
         help(sinfo);
+        return false;
       } else {
         final boolean sresult = sibling.CAS_INFO(sinfo, new Mark2<>(info));
         final Info curSinfo = sibling.info;
 
         if (sresult ||
             (curSinfo.getClass() == Mark2.class && ((Mark2<V>) curSinfo).deleteInfo == info)) {
-          helpMarked2(info);
+          return helpMarked2(info);
         } else {
           help(sibling.info);
+          return false;
         }
       }
-
-      return false;
     }
 
     throw new RuntimeException("Should not happen");
@@ -574,6 +580,6 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
   @Override
   public CKDTreeMap<V> clone() {
-    return null;
+    return snapshot();
   }
 }
