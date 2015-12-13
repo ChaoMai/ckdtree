@@ -3,174 +3,192 @@ package chaomai.ckdtree.snapshot1;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
- * Created by chaomai on 11/1/15.
+ * Created by chaomai on 12/2/15.
  */
-abstract class Node<V> {
+class Node<V> {
   private static final AtomicReferenceFieldUpdater<Node, Node> leftUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "left");
   private static final AtomicReferenceFieldUpdater<Node, Node> rightUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "right");
+  private static final AtomicReferenceFieldUpdater<Node, Info> infoUpdater =
+      AtomicReferenceFieldUpdater.newUpdater(Node.class, Info.class, "info");
   private static final AtomicReferenceFieldUpdater<Node, Node> prevUpdater =
       AtomicReferenceFieldUpdater.newUpdater(Node.class, Node.class, "prev");
   final double[] key;
+  final V value;
+  final int skippedDepth;
   final Gen gen;
   volatile Node<V> left;
   volatile Node<V> right;
+  volatile Info info;
   volatile Node<V> prev;
 
-  Node() {
-    this(null);
-  }
-
-  Node(double[] key) {
-    this(key, null, null, null);
-  }
-
-  Node(double[] key, Node<V> left, Node<V> right, Gen gen) {
+  private Node(final double[] key, final V value, final int skippedDepth, final Node<V> left,
+               final Node<V> right, final Gen gen) {
     this.key = key;
+    this.value = value;
+    this.skippedDepth = skippedDepth;
     this.left = left;
     this.right = right;
     this.prev = null;
     this.gen = gen;
   }
 
-  private boolean CAS_LEFT(Node<V> old, Node<V> n) {
+  Node(final double[] key, final V value) {
+    this(key, value, 0, null, null, null);
+  }
+
+  Node(final double[] key, final int skippedDepth, final Node<V> left, final Node<V> right,
+       final Gen gen) {
+    this(key, null, skippedDepth, left, right, gen);
+  }
+
+  boolean CAS_LEFT(final Node<V> old, final Node<V> n) {
     return leftUpdater.compareAndSet(this, old, n);
   }
 
-  private boolean CAS_RIGHT(Node<V> old, Node<V> n) {
+  boolean CAS_RIGHT(final Node<V> old, final Node<V> n) {
     return rightUpdater.compareAndSet(this, old, n);
   }
 
-  private boolean CAS_PREV(Node<V> old, Node<V> n) {
+  boolean CAS_INFO(final Info old, final Info n) {
+    return infoUpdater.compareAndSet(this, old, n);
+  }
+
+  void WRITE_INFO(final Info n) {
+    infoUpdater.set(this, n);
+  }
+
+  private boolean CAS_PREV(final Node<V> old, final Node<V> n) {
     return prevUpdater.compareAndSet(this, old, n);
   }
 
-  protected void WRITE_LEFT(Node<V> left) {
-    leftUpdater.set(this, left);
+  protected void WRITE_PREV(final Node<V> n) {
+    prevUpdater.set(this, n);
   }
 
-  protected void WRITE_RIGHT(Node<V> right) {
-    rightUpdater.set(this, right);
-  }
+  private Node<V> GCAS_LEFT_Complete(final Node<V> n, final CKDTreeMap<V> ckd) {
+    if (n == null) {
+      return null;
+    } else {
+      Node<V> prev = n.prev;
 
-  protected void WRITE_PREV(Node<V> old) {
-    prevUpdater.set(this, old);
-  }
+      if (prev == null) {
+        return n;
+      }
 
-  private Node<V> GCAS_COMPLETE(Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
-    while (true) {
-      if (n == null) {
-        return null;
-      } else {
-        Node<V> prev = n.prev;
+      if (prev.getClass() == FailedNode.class) {
+        FailedNode<V> fn = (FailedNode<V>) prev;
 
-        if (prev == null) {
-          return n;
+        if (CAS_LEFT(n, fn.prev)) {
+          return fn.prev;
+        } else {
+          return GCAS_LEFT_Complete(this.left, ckd);
         }
+      } else {
+        // normal node
+        Node<V> ckdr = ckd.RDCSS_READ_ROOT(true);
 
-        if (prev instanceof FailedNode) {
-          FailedNode<V> fn = (FailedNode<V>) prev;
-          if (direction == Direction.LEFT) {
-            if (CAS_LEFT(n, fn.prev)) {
-              return fn.prev;
-            } else {
-              n = this.left;
-              continue;
-            }
+        if (ckdr.gen == this.gen) {
+          if (n.CAS_PREV(prev, null)) {
+            return n;
           } else {
-            if (CAS_RIGHT(n, fn.prev)) {
-              return fn.prev;
-            } else {
-              n = this.right;
-              continue;
-            }
+            return GCAS_LEFT_Complete(n, ckd);
           }
-        } else if (prev instanceof InternalNode || prev instanceof Leaf) {
-          InternalNode<V> root = ckd.RDCSS_READ_ROOT(true);
-
-          if (root.gen == this.gen && !ckd.isReadOnly()) {
-            if (n.CAS_PREV(prev, null)) {
-              return n;
-            } else {
-              continue;
-            }
-          } else {
-            n.CAS_PREV(prev, new FailedNode<>(prev));
-
-            if (direction == Direction.LEFT) {
-              return GCAS_COMPLETE(this.left, ckd, direction);
-            } else {
-              return GCAS_COMPLETE(this.right, ckd, direction);
-            }
-          }
+        } else {
+          n.CAS_PREV(prev, new FailedNode<>(prev));
+          return GCAS_LEFT_Complete(this.left, ckd);
         }
       }
     }
   }
 
-  protected boolean GCAS(Node<V> old, Node<V> n, CKDTreeMap<V> ckd, Direction direction) {
+  Object GCAS_LEFT(final Node<V> old, final Node<V> n, CKDTreeMap<V> ckd) {
     n.WRITE_PREV(old);
-
-    if (direction == Direction.LEFT) {
-      if (CAS_LEFT(old, n)) {
-        GCAS_COMPLETE(n, ckd, direction);
-        return n.prev == null;
+    if (CAS_LEFT(old, n)) {
+      if (GCAS_LEFT_Complete(n, ckd) == old) {
+        return Gen.GenFailed;
       } else {
-        return false;
+        return n.prev == null;
       }
     } else {
-      if (CAS_RIGHT(old, n)) {
-        GCAS_COMPLETE(n, ckd, direction);
-        return n.prev == null;
+      return false;
+    }
+  }
+
+  private Node<V> GCAS_RIGHT_Complete(final Node<V> n, final CKDTreeMap<V> ckd) {
+    if (n == null) {
+      return null;
+    } else {
+      Node<V> prev = n.prev;
+
+      if (prev == null) {
+        return n;
+      }
+
+      if (prev.getClass() == FailedNode.class) {
+        FailedNode<V> fn = (FailedNode<V>) prev;
+
+        if (CAS_RIGHT(n, fn.prev)) {
+          return fn.prev;
+        } else {
+          return GCAS_RIGHT_Complete(this.right, ckd);
+        }
       } else {
-        return false;
+        // normal node
+        Node<V> ckdr = ckd.RDCSS_READ_ROOT(true);
+
+        if (ckdr.gen == this.gen) {
+          if (n.CAS_PREV(prev, null)) {
+            return n;
+          } else {
+            return GCAS_RIGHT_Complete(n, ckd);
+          }
+        } else {
+          n.CAS_PREV(prev, new FailedNode<>(prev));
+          return GCAS_RIGHT_Complete(this.right, ckd);
+        }
       }
     }
   }
 
-  protected Node<V> GCAS_READ_LEFT_CHILD(CKDTreeMap<V> ckd) {
+  Object GCAS_RIGHT(final Node<V> old, final Node<V> n, CKDTreeMap<V> ckd) {
+    n.WRITE_PREV(old);
+    if (CAS_RIGHT(old, n)) {
+      if (GCAS_RIGHT_Complete(n, ckd) == old) {
+        return Gen.GenFailed;
+      } else {
+        return n.prev == null;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  Node<V> GCAS_READ_LEFT(CKDTreeMap<V> ckd) {
     Node<V> prev = this.left.prev;
 
     if (prev == null) {
       return this.left;
     } else {
-      return GCAS_COMPLETE(this.left, ckd, Direction.LEFT);
+      return GCAS_LEFT_Complete(this.left, ckd);
     }
   }
 
-  protected Node<V> GCAS_READ_RIGHT_CHILD(CKDTreeMap<V> ckd) {
+  Node<V> GCAS_READ_RIGHT(CKDTreeMap<V> ckd) {
     Node<V> prev = this.right.prev;
 
     if (prev == null) {
       return this.right;
     } else {
-      return GCAS_COMPLETE(this.right, ckd, Direction.RIGHT);
+      return GCAS_RIGHT_Complete(this.right, ckd);
     }
   }
 
-  @Override
-  public String toString() {
-    String res = "key: [";
+  Node<V> renew(Gen newGen, CKDTreeMap<V> ckd) {
+    Node<V> ol = this.GCAS_READ_LEFT(ckd);
+    Node<V> or = this.GCAS_READ_RIGHT(ckd);
 
-    for (double d : this.key) {
-      res += d + ", ";
-    }
-
-    res += "]\n";
-
-    if (this.left != null) {
-      res += "left: " + this.left.toString() + "\n";
-    } else {
-      res += "left: null\n";
-    }
-
-    if (this.right != null) {
-      res += "right: " + this.right.toString() + "\n";
-    } else {
-      res += "right: null\n";
-    }
-
-    return res;
+    return new Node<>(this.key, this.skippedDepth, ol, or, newGen);
   }
 }

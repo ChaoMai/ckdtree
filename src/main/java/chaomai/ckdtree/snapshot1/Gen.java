@@ -1,6 +1,8 @@
 package chaomai.ckdtree.snapshot1;
 
 /**
- * Created by chaomai on 11/1/15.
+ * Created by chaomai on 12/8/15.
  */
-final class Gen { }
+class Gen {
+  static final Object GenFailed = new Object();
+}

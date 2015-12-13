@@ -1,14 +1,14 @@
 package chaomai.ckdtree;
 
-//import chaomai.ckdtree.snapshot1.CKDTreeMap;
-
-import chaomai.ckdtree.snapshot2.CKDTreeMap;
+import chaomai.ckdtree.snapshot1.CKDTreeMap;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Callable;
+
+//import chaomai.ckdtree.snapshot2.CKDTreeMap;
 
 //import chaomai.ckdtree.snapshot3.CKDTreeMap;
 
@@ -550,8 +550,9 @@ public class CKDTreeMapCommonTest {
 
   @Test
   public void testSpecial() {
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 500; ++i) {
       try {
+        testMultithreadAdd();
         testDelete();
       } catch (Exception e) {
         e.printStackTrace();

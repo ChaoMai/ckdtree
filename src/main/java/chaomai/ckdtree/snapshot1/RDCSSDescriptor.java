@@ -1,18 +1,18 @@
 package chaomai.ckdtree.snapshot1;
 
 /**
- * Created by chaomai on 11/10/15.
+ * Created by chaomai on 12/9/15.
  */
 class RDCSSDescriptor<V> {
-  InternalNode<V> ov;
-  Node<V> ol;
-  InternalNode<V> nv;
-  volatile boolean committed = false;
+  final Node<V> or;
+  final Node<V> ol;
+  final Node<V> nr;
+  volatile boolean committed;
 
-  RDCSSDescriptor(InternalNode<V> ov, Node<V> ol, InternalNode<V> nv) {
-    this.ov = ov;
+  RDCSSDescriptor(final Node<V> or, final Node<V> ol, final Node<V> nr) {
+    this.or = or;
     this.ol = ol;
-    this.nv = nv;
+    this.nr = nr;
     this.committed = false;
   }
 }

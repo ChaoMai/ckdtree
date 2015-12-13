@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 @SuppressWarnings({"unused"})
-public class CKDTreeMap<V> implements ICKDTreeMap<V> {
+public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   final InternalNode root;
   private final int dimension;
   private final AtomicInteger size = new AtomicInteger();
@@ -63,7 +63,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
 
     Node cur = this.root;
 
-    while (cur instanceof InternalNode) {
+    while (cur.getClass() == InternalNode.class) {
       gp = p;
       gpupdate = pupdate;
       p = (InternalNode) cur;
@@ -307,7 +307,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       sibling = info.p.left;
     }
 
-    if (sibling instanceof Leaf) {
+    if (sibling.getClass() == Leaf.class) {
       Leaf<V> ns = new Leaf<>(sibling.key, ((Leaf<V>) sibling).value);
 
       // dchild1
@@ -324,7 +324,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       // unflag
       info.gp.CAS_UPDATE(info.gp.update, new Update());
 
-    } else if (sibling instanceof InternalNode) {
+    } else if (sibling.getClass() == InternalNode.class) {
       Update supdate = ((InternalNode) sibling).update;
 
       if (supdate.state == State.CLEAN) {
@@ -363,18 +363,17 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
       }
 
       // check sibling
-      if (sibling instanceof Leaf) {
+      if (sibling.getClass() == Leaf.class) {
         helpMarked1(m1u);
         return true;
-      } else if (sibling instanceof InternalNode) {
+      } else if (sibling.getClass() == InternalNode.class) {
         Update supdate = ((InternalNode) sibling).update;
 
         if (supdate.state == State.CLEAN) {
           Update m2u = new Update(State.MARK2, info);
           boolean sresult = ((InternalNode) sibling).CAS_UPDATE(supdate, m2u);
 
-          if ((supdate.state == State.CLEAN && sresult) ||
-              (supdate.state == State.MARK2 && supdate.info == info)) {
+          if (sresult || (supdate.state == State.MARK2 && supdate.info == info)) {
             helpMarked2(m2u);
             return true;
           } else {
@@ -442,7 +441,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private void readRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return;
     }
 
@@ -454,7 +453,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private boolean checkRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return true;
     }
 
@@ -468,7 +467,7 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   private Node buildRefs(final Node node, final HashMap<InternalNode, Pair<Node, Node>> refs) {
-    if (node instanceof Leaf) {
+    if (node.getClass() == Leaf.class) {
       return node;
     }
 
@@ -510,5 +509,10 @@ public class CKDTreeMap<V> implements ICKDTreeMap<V> {
         return new CKDTreeMap<>(getSnapshot(), this.dimension, sequentialSize(newRoot));
       }
     }
+  }
+
+  @Override
+  public CKDTreeMap<V> clone() {
+    return snapshot();
   }
 }

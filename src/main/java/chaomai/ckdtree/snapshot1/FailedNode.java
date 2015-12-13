@@ -1,11 +1,11 @@
 package chaomai.ckdtree.snapshot1;
 
 /**
- * Created by chaomai on 11/3/15.
+ * Created by chaomai on 12/8/15.
  */
 class FailedNode<V> extends Node<V> {
-  FailedNode(Node<V> prev) {
-    super();
-    WRITE_PREV(prev);
+  FailedNode(final Node<V> old) {
+    super(null, null);
+    WRITE_PREV(old);
   }
 }

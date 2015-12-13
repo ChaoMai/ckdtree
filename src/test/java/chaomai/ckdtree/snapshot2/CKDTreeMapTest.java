@@ -91,14 +91,14 @@ public class CKDTreeMapTest {
       System.out.println("generating keys");
     }
 
-    double[][] k = Utilities.generateRandomArrays(samples, dimension);
+    double[][] k1 = Utilities.generateRandomArrays(samples, dimension);
 
     if (isVerbose) {
       System.out.println("adding");
     }
 
-    Utilities.addKeysToCKD(k, ckd);
-    Utilities.checkKeysInCKD(k, ckd, true);
+    Utilities.addKeysToCKD(k1, ckd);
+    Utilities.checkKeysInCKD(k1, ckd, true);
     Assert.assertEquals(samples, ckd.size());
 
     if (isVerbose) {
@@ -109,16 +109,34 @@ public class CKDTreeMapTest {
 
     Assert.assertEquals(samples, snap.size());
 
-    ArrayList<Map.Entry<double[], Integer>> ls = new ArrayList<>();
+    ArrayList<Map.Entry<double[], Integer>> ls1 = new ArrayList<>();
     for (Map.Entry<double[], Integer> l : snap) {
-      ls.add(l);
+      ls1.add(l);
     }
 
-    Assert.assertEquals(samples, ls.size());
+    Assert.assertEquals(samples, ls1.size());
 
     for (Map.Entry<double[], Integer> l : snap) {
       Assert.assertTrue(ckd.contains(l.getKey()));
     }
+
+    double[][] k2 = Utilities.generateRandomArrays(samples, dimension);
+
+    if (isVerbose) {
+      System.out.println("adding into snapshot");
+    }
+
+    Utilities.addKeysToCKD(k2, snap);
+    Utilities.checkKeysInCKD(k1, snap, true);
+    Utilities.checkKeysInCKD(k2, snap, true);
+    Assert.assertEquals(samples * 2, snap.size());
+
+    ArrayList<Map.Entry<double[], Integer>> ls2 = new ArrayList<>();
+    for (Map.Entry<double[], Integer> l : snap) {
+      ls2.add(l);
+    }
+
+    Assert.assertEquals(samples * 2, ls2.size());
   }
 
   private void snapshotOnTreeWithMultithreadUpdate()
@@ -193,8 +211,7 @@ public class CKDTreeMapTest {
 
     for (int i = 0; i < threads; ++i) {
       taskList2.add(() -> {
-        for (int j = 0; j < 100; ++j) {
-          TimeUnit.MICROSECONDS.sleep(100);
+        for (int j = 0; j < 1000; ++j) {
           ckd.snapshot();
         }
         return ckd.snapshot();
