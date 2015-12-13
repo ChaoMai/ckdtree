@@ -372,7 +372,7 @@ public class CKDTreeMapTest {
   @Test
   public void testSpecial() throws Exception {
     for (int i = 0; i < 5000; ++i) {
-      testSnapshot();
+      snapshotOnTreeWithMultithreadInsert();
     }
   }
 }

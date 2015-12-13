@@ -16,12 +16,12 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   private final int dimension;
   private volatile Object root;
 
-  private CKDTreeMap(Node<V> root, int dimension) {
+  private CKDTreeMap(final Node<V> root, final int dimension) {
     this.root = root;
     this.dimension = dimension;
   }
 
-  public CKDTreeMap(int dimension) {
+  public CKDTreeMap(final int dimension) {
 
     this.dimension = dimension;
 
@@ -33,11 +33,11 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     this.root = new Node<>(key, 0, new Node<>(key, null), new Node<>(key, null), new Gen());
   }
 
-  private boolean keyEqual(double[] k1, double[] k2) {
+  private boolean keyEqual(final double[] k1, final double[] k2) {
     return Arrays.equals(k1, k2);
   }
 
-  private int keyCompare(double[] k1, double[] k2, int depth) {
+  private int keyCompare(final double[] k1, final double[] k2, final int depth) {
     if (k1[0] == Double.POSITIVE_INFINITY && k2[0] == Double.POSITIVE_INFINITY) {
       return -1;
     }
@@ -53,7 +53,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private Object searchKey(double[] key, Gen startGen) {
+  private Object searchKey(final double[] key, final Gen startGen) {
     Node<V> gp = null;
     Info gpinfo = null;
     Node<V> p = null;
@@ -101,7 +101,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return new SearchRes<>(gp, gpinfo, p, pinfo, l, depth);
   }
 
-  private SearchRes<V> search(double[] key) {
+  private SearchRes<V> search(final double[] key) {
     while (true) {
       Object result = searchKey(key, RDCSS_READ_ROOT().gen);
 
@@ -111,7 +111,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private Node<V> createSubTree(double[] k, V v, Node<V> l, int depth) {
+  private Node<V> createSubTree(final double[] k, final V v, final Node<V> l, int depth) {
     int skip = 0;
     int compareResult;
 
@@ -136,7 +136,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return new Node<>(maxKey, skip, left, right, RDCSS_READ_ROOT().gen);
   }
 
-  private void help(Info info) {
+  private void help(final Info info) {
     if (info.getClass() == InsertInfo.class) {
       helpInsert((InsertInfo<V>) info);
     } else if (info.getClass() == DeleteInfo.class) {
@@ -148,7 +148,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private boolean helpInsert(InsertInfo<V> info) {
+  private boolean helpInsert(final InsertInfo<V> info) {
     final Object result;
 
     if (info.l == info.p.left) {
@@ -169,7 +169,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     }
   }
 
-  private boolean insert(double[] key, V value) {
+  private boolean insert(final double[] key, final V value) {
     while (true) {
       final SearchRes<V> sr = search(key);
 
@@ -202,7 +202,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   @Override
-  public boolean add(double[] key, V value) {
+  public boolean add(final double[] key, final V value) {
     return insert(key, value);
   }
 
@@ -212,7 +212,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   @Override
-  public boolean contains(double[] key) {
+  public boolean contains(final double[] key) {
     final SearchRes sr = search(key);
     return keyEqual(sr.l.key, key);
   }
@@ -256,7 +256,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
         throw new RuntimeException("Should not happen");
       }
 
-      private Map.Entry<double[], V> entry(Node<V> cur) {
+      private Map.Entry<double[], V> entry(final Node<V> cur) {
         return new Map.Entry<double[], V>() {
           @Override
           public double[] getKey() {
@@ -279,7 +279,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   @Override
-  public V get(double[] key) {
+  public V get(final double[] key) {
     if (contains(key)) {
       final SearchRes sr = search(key);
       return (V) sr.l.value;
@@ -289,7 +289,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   // sibling is InternalNode
-  private boolean helpMarked2(DeleteInfo<V> info) {
+  private boolean helpMarked2(final DeleteInfo<V> info) {
     final Node<V> sibling;
 
     if (info.l == info.p.left) {
@@ -325,7 +325,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   // sibling may be a leaf
-  private boolean helpMarked1(DeleteInfo<V> info) {
+  private boolean helpMarked1(final DeleteInfo<V> info) {
     final Node<V> sibling;
 
     if (info.l == info.p.left) {
@@ -383,7 +383,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     throw new RuntimeException("Should not happen");
   }
 
-  private boolean helpDelete(DeleteInfo<V> info) {
+  private boolean helpDelete(final DeleteInfo<V> info) {
     // mark1
     final boolean result = info.p.CAS_INFO(info.pinfo, new Mark1<>(info));
     final Info curPinfo = info.p.info;
@@ -432,7 +432,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     throw new RuntimeException("Should not happen");
   }
 
-  private boolean delete(double[] key) {
+  private boolean delete(final double[] key) {
     while (true) {
       final SearchRes<V> sr = search(key);
 
@@ -472,7 +472,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
   }
 
   @Override
-  public boolean remove(double[] key) {
+  public boolean remove(final double[] key) {
     return delete(key);
   }
 
@@ -484,7 +484,7 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
     return sequentialSize(RDCSS_READ_ROOT());
   }
 
-  private int sequentialSize(Node node) {
+  private int sequentialSize(final Node node) {
     if (node.left == null) {
       if (Double.isFinite(node.key[0])) {
         return 1;
@@ -518,9 +518,10 @@ public final class CKDTreeMap<V> implements ICKDTreeMap<V> {
           return RDCSS_Complete(abort);
         }
       } else {
-        Node<V> oldLeaf = or.GCAS_READ_LEFT(this);
+        final Node<V> oldLeaf = or.GCAS_READ_LEFT(this);
+        final Info oldInfo = or.info;
 
-        if (oldLeaf == ol) {
+        if (oldLeaf == ol && (oldInfo == null || oldInfo.getClass() == Clean.class)) {
           if (CAS_ROOT(desc, nr)) {
             desc.committed = true;
             return nr;
